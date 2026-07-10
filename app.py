@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from pymongo import MongoClient
 
 # Initialisierung der Flask-Applikation
@@ -22,6 +22,32 @@ def home():
         "status": "erfolgreich",
         "nachricht": "Willkommen bei der Community Lost & Found App!"
     })
+
+# CRUD: CREATE (Erstellen einer Fundmeldung)
+@app.route('/api/items', methods=['POST'])
+def create_item():
+    """
+    Endpunkt zum Erstellen einer neuen Fundmeldung in der Datenbank.
+    """
+    # Empfangen der JSON-Daten vom Client
+    data = request.get_json()
+
+    # Validierung: Überprüfen, ob Daten übermittelt wurden
+    if not data:
+        return jsonify({
+            "status": "error",
+            "message": "Keine Daten übergeben"
+        }), 400
+
+    # Einfügen des Dokuments in die MongoDB-Collection
+    result = items_collection.insert_one(data)
+
+    # Rückmeldung an den Client mit der generierten MongoDB_ID
+    return jsonify({
+        "status": "success",
+        "message": "Fundmeldung erfolgreich angelegt",
+        "id": str(result.inserted_id)
+    }), 201
 
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
