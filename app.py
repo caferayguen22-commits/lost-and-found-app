@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 
 # Initialisierung der Flask-Applikation
 app = Flask(__name__)
@@ -62,6 +63,29 @@ def get_items():
         all_items.append(item)
 
     return jsonify(all_items), 200
+
+@app.route('/api/items/<item_id>', methods=['DELETE'])
+def delete_item(item_id):
+    try:
+        # Dokument anhand der ID aus der MongoDB löschen
+        result = items_collection.delete_one({'_id': ObjectId(item_id)})
+
+        if result.deleted_count == 1:
+            return jsonify({
+                "status": "success",
+                "message": "Gegenstand erfolgreich an den Besitzer übergeben und gelöscht!"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Gegenstand wurde nicht gefunden"
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": "Gegenstand wurde nicht gefunden"
+        }), 400
 
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
