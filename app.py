@@ -87,6 +87,42 @@ def delete_item(item_id):
             "message": "Gegenstand wurde nicht gefunden"
         }), 400
 
+@app.route('/api/items/<item_id>', methods=['PUT'])
+def update_item(item_id):
+    try:
+        # Die neuen Daten aus dem JSON-Body der Anfrage holen
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                "status": "error",
+                "message": "Keine Daten für die Aktualisierung übergeben."
+            }), 400
+
+        # Dokument in der MongoDB aktualisieren ($set überschreibt nur die übergebenen Felder)
+        result = items_collection.update_one(
+            {'_id': ObjectId(item_id)},
+            {'$set': data}
+        )
+
+        # Prüfen. ob ein Dokument mit dieser ID gefunden wurde
+        if result.matched_count == 1:
+            return jsonify({
+                "status": "success",
+                "message": "Gegenstand erfolgreich aktualisiert!"
+            }), 200
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Gegenstand wurde nicht gefunden"
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": "Ungültige ID übergeben."
+        }), 400
+
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
