@@ -49,6 +49,20 @@ def create_item():
         "id": str(result.inserted_id)
     }), 201
 
+@app.route('/api/items', methods=['GET'])
+def get_items():
+    # Alle Dokumente aus der MongoDB-Collection abrufen
+    items_cursor = items_collection.find()
+
+    # Die Daten in eine normale Python-Liste umwandeln
+    all_items = []
+    for item in items_cursor:
+        # Die MongoDB-ID (_id) müssen wir für JSON in einen String umwandeln
+        item['_id'] = str(item['_id'])
+        all_items.append(item)
+
+    return jsonify(all_items), 200
+
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
