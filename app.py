@@ -123,6 +123,24 @@ def update_item(item_id):
             "message": "Ungültige ID übergeben."
         }), 400
 
+@app.route('/api/stations', methods=['GET'])
+def get_stations():
+    try:
+        # Alle Stationen aus der neuen Kollektion abrufen
+        stations = list(db['berlin_stations'].find())
+
+        # MongoDB ObjectIds in Strings umwandeln für JSON
+        for station in stations:
+            station['_id'] = str(station['_id'])
+
+        return jsonify(stations), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": "Fehler beim Abrufen der Stationen."
+        }), 500
+
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
