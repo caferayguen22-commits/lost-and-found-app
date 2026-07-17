@@ -141,6 +141,45 @@ def get_stations():
             "message": "Fehler beim Abrufen der Stationen."
         }), 500
 
+@app.route('/api/stations/recommend', methods=['GET'])
+def recommend_stations():
+    try:
+        # Wir holen uns die Kategorie aus den Query-Parametern der URL (z.B. ?category=U-Bahn)
+        category = request.args.get('category')
+
+        if not category:
+            return jsonify({
+                "status": "error",
+                "message": "Bitte gib eine Kategorie an (z.B. ?category=U-Bahn)."
+            }), 400
+
+        # Wir suchen in der Datenbank nach einer Station, die diese Kategorie bedient
+        station = db['berlin_stations'].find_one({"serves_category": category})
+
+        if station:
+            station['_id'] = str(station['_id'])  # ObjectID für JSON umwandeln
+            return jsonify({
+                "status": "success",
+                "recommended_station": station
+            }), 200
+        else:
+            # Falls wir für eine Kategorie keine spezielle Station haben, verweisen wir auf das Zentralfundbüro
+            backup_station = db['berlin_stations'].find_one({"name": "Zentrales Fundbüro Berlin"})
+            if backup_station:
+                backup_station['_id'] = str(backup_station['_id'])
+
+            return jsonify({
+                "status": "success",
+                "message": "Keine spezifische Station für diese Kategorie gefunden. Allgemeine Empfehlung gesendet.",
+                "recommended_station": backup_station
+            }), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Fehler bei der Empfehlung: {str(e)}"
+        }), 500
+
 # Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
