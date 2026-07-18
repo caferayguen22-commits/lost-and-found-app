@@ -15,7 +15,6 @@ openai_client = OpenAI()
 app = Flask(__name__)
 
 # Konfiguration der MongoDB-Verbindung
-# Verbindungsaufbau zur lokalen MongoDB-Instanz über den Standard-Port 27017
 client = MongoClient("mongodb://localhost:27017/")
 
 # Definition von Datenbank und Collection für das Projekt
@@ -34,143 +33,197 @@ def home():
     })
 
 
-# CRUD: CREATE (Erstellen einer Fundmeldung inklusive KI-Bericht)
+# CRUD: CREATE (Erstellen einer Meldung inklusive KI-Bericht und Matching)
 @app.route('/api/items', methods=['POST'])
 def create_item():
     """
-    Endpunkt zum Erstellen einer neuen Fundmeldung in der Datenbank.
-    Integriert eine automatische Generierung eines offiziellen Berichts via OpenAI.
+    Endpunkt zum Erstellen einer neuen Meldung (Fund oder Verlust).
+    Validiert den Typ strikt und gleicht Funde mittels KI gegen Verlustmeldungen ab.
+    Integriert ein psychologisch optimiertes, motivierendes Belohnungssystem.
     """
-    # Empfangen der JSON-Daten vom Client
     data = request.get_json()
 
-    # Validierung: Überprüfen, ob Daten übermittelt wurden
+    # Validierung: Überprüfen, ob überhaupt Daten übermittelt wurden
     if not data:
         return jsonify({
             "status": "error",
-            "message": "Keine Daten übergeben"
+            "message": "Keine Daten übergeben."
         }), 400
 
-    # Extraktion der relevanten Felder für die KI-Verarbeitung
+    # Strikte Validierung des Typs (Verhindert Fehlinterpretationen der API)
+    item_type = data.get('type')
+    if item_type not in ['lost', 'found']:
+        return jsonify({
+            "status": "error",
+            "message": "Ungültiger oder fehlender Typ. Erlaubt sind ausschließlich 'lost' oder 'found'."
+        }), 400
+
+    # Extraktion der relevanten Felder für die Verarbeitung
     title = data.get('title', 'Unbekannter Gegenstand')
     description = data.get('description', 'Keine Beschreibung vorhanden')
-    location = data.get('location', 'Kein spezifischer Fundort angegeben')
+    location = data.get('location', 'Kein spezifischer Ort angegeben')
+
+    # Psychologisch optimierter Hinweis zur Motivierung des Nutzers
+    if item_type == 'found':
+        data['user_hint'] = (
+            "Danke, dass du ein ehrlicher Finder bist! Hilf dem suchenden Besitzer, "
+            "seinen Gegenstand schnell wiederzufinden: Je genauer du Details wie "
+            "Hülle (Farbe/Material), Displaykratzer, Risse, Schäden oder das "
+            "Sperrbildschirm-Hintergrundbild beschreibst, desto sicherer schlägt unser "
+            "automatisches KI-Matching an."
+        )
+    else:
+        data['user_hint'] = (
+            "Um die Chancen für ein erfolgreiches Matching zu maximieren, beschreibe "
+            "deinen Verlust bitte so präzise wie möglich (z. B. besondere Merkmale, "
+            "Kratzer, Hüllen oder Hintergrundbilder)."
+        )
 
     try:
-        # Erstellung des Prompts für die Generierung des offiziellen Berichts
-        prompt = (
-            f"Generiere einen kurzen, professionellen offiziellen Bericht für eine Fundmeldung.\n"
-            f"Gegenstand: {title}\n"
-            f"Beschreibung: {description}\n"
-            f"Fundort: {location}"
-        )
+        # Fall 1: Ein Gegenstand wurde gefunden -> Matching-Prozess starten
+        if item_type == 'found':
+            # Abrufen aller existierenden Verlustmeldungen aus der Datenbank
+            lost_items_cursor = items_collection.find({"type": "lost"})
+            lost_items_list = []
+            for item in lost_items_cursor:
+                lost_items_list.append({
+                    "id": str(item['_id']),
+                    "title": item.get('title'),
+                    "description": item.get('description'),
+                    "location": item.get('location'),
+                })
 
-        # Anfrage an die OpenAI-API zur Erstellung der Zusammenfassung
-        ai_response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Du bist ein präziser und professioneller Assistent für ein digitales Fundbüro. Erstelle kurze, sachliche und strukturiert formatierte Berichte für Fundmeldungen."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.5
-        )
+            # Formulierung des Prompts für Berichterstellung und Matching-Analyse (Gamified & Token-schonend)
+            prompt = (
+                f"=== NEUER FUNDGEGENSTAND ===\n"
+                f"Gegenstand: {title}\n"
+                f"Beschreibung: {description}\n"
+                f"Fundort: {location}\n\n"
+                f"=== EXISTIERENDE VERLUSTMELDUNGEN IN DER DATENBANK ===\n"
+                f"{lost_items_list}\n\n"
+                f"Aufgaben:\n"
+                f"1. Erstelle eine ultrakurze, packende Zusammenfassung des Fundes. Nutze keine Emojis! Mach es modern, energiegeladen und leicht lesbar.\n"
+                f"2. Vergleiche den Fund mit den Verlustmeldungen. Wenn ein Match existiert, berechne die Wahrscheinlichkeit in Prozent und feiere den Finder psychologisch als potenziellen Helden, der kurz davor steht, jemandes Tag zu retten! Nenne die Match-ID deutlich und hebe Übereinstimmungen (Farbe, Zustand, Details) prägnant hervor. Falls kein Match existiert, motiviere kurz weiterzusuchen."
+            )
 
-        # Extrahieren des generierten Textes aus der API-Antwort
-        generated_report = ai_response.choices[0].message.content
+            ai_response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Du bist das smarte, dynamische Herzstück unserer Lost & Found Community. "
+                            "Deine Sprache ist modern, klar, absolut nahbar, motivierend und direkt. Verwende KEINE Emojis. "
+                            "Nutze psychologische Trigger: Gib dem Finder das Gefühl, ein Held auf einer Mission zu sein. "
+                            "Vermeide bürokratische Formulierungen wie 'Vorfallsbericht', 'Maßnahmen' oder 'Unterschrift'. "
+                            "Arbeite mit kurzen Sätzen, klaren Markdown-Hervorhebungen und maximaler Übersichtlichkeit."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.6
+            )
+            data['ai_report'] = ai_response.choices[0].message.content
 
-        # Anhängen des KI-Berichts an das bestehende Datenobjekt vor dem DB-Insert
-        data['ai_report'] = generated_report
+        # Fall 2: Ein Gegenstand wird als verloren gemeldet -> Nur Bericht generieren
+        else:
+            prompt = (
+                f"Erstelle eine moderne, direkt auf den Punkt kommende Zusammenfassung für diese Verlustmeldung.\n"
+                f"Gegenstand: {title}\n"
+                f"Beschreibung: {description}\n"
+                f"Verlustort: {location}"
+            )
+            ai_response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Erstelle eine kurze, moderne und übersichtliche Zusammenfassung einer Verlustmeldung. "
+                            "Nutze KEINE Emojis. Die Sprache soll empathisch, locker, direkt und klar strukturiert sein – absolut kein Behördenstil."
+                        )
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            data['ai_report'] = ai_response.choices[0].message.content
 
     except Exception as e:
-        # Fallback-Verhalten: Falls die API fehlschlägt, wird der Fehler protokolliert,
-        # die Fundmeldung wird jedoch ohne KI-Bericht gespeichert, um die App-Funktion nicht zu blockieren.
+        # Fallback-Verhalten bei API-Fehlern
         data['ai_report'] = f"KI-Bericht konnte nicht generiert werden. Fehler: {str(e)}"
 
-    # Einfügen des erweiterten Dokuments in die MongoDB-Collection
+    # Einfügen des validierten und erweiterten Dokuments in die MongoDB
     result = items_collection.insert_one(data)
 
-    # Rückmeldung an den Client mit der generierten MongoDB_ID und dem KI-Bericht
+    # Rückmeldung an den Client
     return jsonify({
         "status": "success",
-        "message": "Fundmeldung inklusive KI-Bericht erfolgreich angelegt",
+        "message": "Meldung erfolgreich angelegt.",
         "id": str(result.inserted_id),
-        "ai_report": data['ai_report']
+        "ai_report": data['ai_report'],
+        "hint": data['user_hint']
     }), 201
 
 
 @app.route('/api/items', methods=['GET'])
 def get_items():
     """
-    Endpunkt zum Abrufen aller Fundmeldungen aus der Datenbank.
+    Endpunkt zum Abrufen aller Fund- und Verlustmeldungen aus der Datenbank.
     """
-    # Alle Dokumente aus der MongoDB-Collection abrufen
     items_cursor = items_collection.find()
-
-    # Die Daten in eine normale Python-Liste umwandeln
     all_items = []
     for item in items_cursor:
-        # Die MongoDB-ID (_id) müssen wir für JSON in einen String umwandeln
         item['_id'] = str(item['_id'])
         all_items.append(item)
-
     return jsonify(all_items), 200
 
 
 @app.route('/api/items/<item_id>', methods=['DELETE'])
 def delete_item(item_id):
     """
-    Endpunkt zum Löschen einer Fundmeldung anhand ihrer eindeutigen ID.
+    Endpunkt zum Löschen einer Meldung anhand ihrer eindeutigen ID.
     """
     try:
-        # Dokument anhand der ID aus der MongoDB löschen
         result = items_collection.delete_one({'_id': ObjectId(item_id)})
-
         if result.deleted_count == 1:
             return jsonify({
                 "status": "success",
-                "message": "Gegenstand erfolgreich an den Besitzer übergeben und gelöscht!"
+                "message": "Gegenstand erfolgreich aus dem System entfernt."
             }), 200
         else:
             return jsonify({
                 "status": "error",
-                "message": "Gegenstand wurde nicht gefunden"
+                "message": "Gegenstand wurde nicht gefunden."
             }), 404
-
-    except Exception as e:
+    except Exception:
         return jsonify({
             "status": "error",
-            "message": "Gegenstand wurde nicht gefunden"
+            "message": "Ungültige ID übergeben."
         }), 400
 
 
 @app.route('/api/items/<item_id>', methods=['PUT'])
 def update_item(item_id):
     """
-    Endpunkt zur Aktualisierung bestehender Felder einer Fundmeldung.
+    Endpunkt zur Aktualisierung bestehender Felder einer Meldung.
     """
     try:
-        # Die neuen Daten aus dem JSON-Body der Anfrage holen
         data = request.get_json()
-
         if not data:
             return jsonify({
                 "status": "error",
                 "message": "Keine Daten für die Aktualisierung übergeben."
             }), 400
 
-        # Dokument in der MongoDB aktualisieren ($set überschreibt nur die übergebenen Felder)
         result = items_collection.update_one(
             {'_id': ObjectId(item_id)},
             {'$set': data}
         )
 
-        # Prüfen, ob ein Dokument mit dieser ID gefunden wurde
         if result.matched_count == 1:
             return jsonify({
                 "status": "success",
@@ -179,10 +232,9 @@ def update_item(item_id):
         else:
             return jsonify({
                 "status": "error",
-                "message": "Gegenstand wurde nicht gefunden"
+                "message": "Gegenstand wurde nicht gefunden."
             }), 404
-
-    except Exception as e:
+    except Exception:
         return jsonify({
             "status": "error",
             "message": "Ungültige ID übergeben."
@@ -195,15 +247,10 @@ def get_stations():
     Endpunkt zum Abrufen aller registrierten Berliner Abgabestationen.
     """
     try:
-        # Alle Stationen aus der Kollektion abrufen
         stations = list(db['berlin_stations'].find())
-
-        # MongoDB ObjectIds in Strings umwandeln für JSON
         for station in stations:
             station['_id'] = str(station['_id'])
-
         return jsonify(stations), 200
-
     except Exception as e:
         return jsonify({
             "status": "error",
@@ -217,26 +264,22 @@ def recommend_stations():
     Endpunkt zur dynamischen Empfehlung einer Abgabestation basierend auf der Fundkategorie.
     """
     try:
-        # Abrufen der Kategorie aus den Query-Parametern der URL (z.B. ?category=U-Bahn)
         category = request.args.get('category')
-
         if not category:
             return jsonify({
                 "status": "error",
                 "message": "Bitte gib eine Kategorie an (z.B. ?category=U-Bahn)."
             }), 400
 
-        # Datenbankabfrage nach einer Station, die diese Kategorie bedient
         station = db['berlin_stations'].find_one({"serves_category": category})
 
         if station:
-            station['_id'] = str(station['_id'])  # ObjectID für JSON umwandeln
+            station['_id'] = str(station['_id'])
             return jsonify({
                 "status": "success",
                 "recommended_station": station
             }), 200
         else:
-            # Fallback: Rückfalloption auf das Zentralfundbüro Berlin, falls keine spezifische Kategorie matcht
             backup_station = db['berlin_stations'].find_one({"name": "Zentrales Fundbüro Berlin"})
             if backup_station:
                 backup_station['_id'] = str(backup_station['_id'])
@@ -246,7 +289,6 @@ def recommend_stations():
                 "message": "Keine spezifische Station für diese Kategorie gefunden. Allgemeine Empfehlung gesendet.",
                 "recommended_station": backup_station
             }), 200
-
     except Exception as e:
         return jsonify({
             "status": "error",
@@ -254,6 +296,5 @@ def recommend_stations():
         }), 500
 
 
-# Start des lokalen Entwicklungsservers
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
