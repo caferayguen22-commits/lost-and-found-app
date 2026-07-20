@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
@@ -25,12 +25,9 @@ items_collection = db["items"]
 @app.route('/')
 def home():
     """
-    Basis-Endpunkt zur Überprüfung des API- und Datenbank-Status.
+    Basis-Endpunkt, der das visuelle Hauptmenü (Startbildschirm) ausliefert.
     """
-    return jsonify({
-        "status": "erfolgreich",
-        "nachricht": "Willkommen bei der Community Lost & Found App!"
-    })
+    return render_template('index.html')
 
 
 # CRUD: CREATE (Erstellen einer Meldung inklusive KI-Bericht und Matching)
