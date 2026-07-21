@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Community Lost & Found</title>
-    <!-- Tailwind CSS Integration via CDN -->
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Eigene CSS-Erweiterungen (Custom Nudging & Animationen) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col justify-center items-center font-sans antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col justify-center items-center font-sans antialiased selection:bg-indigo-500 selection:text-white py-12">
 
-    <!-- Hauptcontainer für die visuelle Zentrierung -->
-    <main class="w-full max-w-4xl px-6 text-center">
+    <main class="w-full max-w-2xl px-6">
 
-        <!-- Minimalistischer, unaufdringlicher Header -->
-        <header class="mb-12">
+        <!-- Header -->
+        <header class="text-center mb-10">
             <h1 class="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 sm:text-5xl">
                 Lost & Found
             </h1>
@@ -22,49 +25,81 @@
             </p>
         </header>
 
-        <!-- Die Zwei-Button-Kommandozentrale (Psychologisch optimiert) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-
-            <!-- Button Option 1: ETWAS VERLOREN (Lost) -->
-            <button onclick="selectOption('lost')"
-                    class="group relative flex flex-col justify-center items-center p-10 bg-gray-900 border border-gray-800 rounded-3xl transition-all duration-300 hover:border-red-500/50 hover:bg-gradient-to-b hover:from-gray-900 hover:to-red-950/20 shadow-xl hover:shadow-red-950/20 active:scale-98">
-                <!-- Visueller Indikator / "Spielautomaten-Effekt" beim Hovern -->
-                <div class="absolute inset-0 rounded-3xl bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <!-- Platzhalter für ein großes Icon im Frontend -->
-                <div class="w-16 h-16 mb-4 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-2xl group-hover:scale-110 transition-transform duration-300">
+        <!-- Startbildschirm: 2 Haupt-Buttons -->
+        <section id="selection-buttons" class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+            <button id="btn-lost"
+                    class="group relative flex flex-col justify-center items-center p-8 bg-gray-900 border border-gray-800 rounded-3xl transition-all duration-300 hover:border-red-500/50 hover:bg-gradient-to-b hover:from-gray-900 hover:to-red-950/20 shadow-xl active:scale-95">
+                <div class="w-14 h-14 mb-3 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400 font-bold text-2xl group-hover:scale-110 transition-transform">
                     ?
                 </div>
-                <span class="text-2xl font-bold tracking-wide group-hover:text-red-400 transition-colors duration-300">
-                    Gegenstand verloren
+                <span class="text-xl font-bold tracking-wide group-hover:text-red-400 transition-colors">
+                    Etwas verloren
                 </span>
             </button>
 
-            <!-- Button Option 2: ETWAS GEFUNDEN (Found) -->
-            <button onclick="selectOption('found')"
-                    class="group relative flex flex-col justify-center items-center p-10 bg-gray-900 border border-gray-800 rounded-3xl transition-all duration-300 hover:border-emerald-500/50 hover:bg-gradient-to-b hover:from-gray-900 hover:to-emerald-950/20 shadow-xl hover:shadow-emerald-950/20 active:scale-98">
-                <div class="absolute inset-0 rounded-3xl bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div class="w-16 h-16 mb-4 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold text-2xl group-hover:scale-110 transition-transform duration-300">
+            <button id="btn-found"
+                    class="group relative flex flex-col justify-center items-center p-8 bg-gray-900 border border-gray-800 rounded-3xl transition-all duration-300 hover:border-emerald-500/50 hover:bg-gradient-to-b hover:from-gray-900 hover:to-emerald-950/20 shadow-xl active:scale-95">
+                <div class="w-14 h-14 mb-3 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold text-2xl group-hover:scale-110 transition-transform">
                     !
                 </div>
-                <span class="text-2xl font-bold tracking-wide group-hover:text-emerald-400 transition-colors duration-300">
-                    Gegenstand gefunden
+                <span class="text-xl font-bold tracking-wide group-hover:text-emerald-400 transition-colors">
+                    Etwas gefunden
                 </span>
             </button>
+        </section>
 
-        </div>
+        <!-- Eingabeformular -->
+        <section id="form-container" class="hidden bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl transition-all duration-500">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="form-title" class="text-2xl font-bold text-white">Meldung erfassen</h2>
+                <button id="btn-back" class="text-gray-500 hover:text-gray-300 text-sm font-semibold transition-colors">
+                    &larr; Zurück
+                </button>
+            </div>
+
+            <!-- Nudging Hint Box -->
+            <div id="hint-box" class="mb-6 p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/40 text-indigo-200 text-sm leading-relaxed"></div>
+
+            <form id="item-form" class="space-y-5">
+                <input type="hidden" id="item-type" name="type">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Gegenstand</label>
+                    <input type="text" id="item-title" required placeholder="z. B. iPhone 15 Pro Max"
+                           class="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Beschreibung (Details, Hülle, Kratzer, Sperrbildschirm)</label>
+                    <textarea id="item-description" rows="3" required placeholder="Je genauer, desto höher die Match-Chancen..."
+                              class="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Ort</label>
+                    <input type="text" id="item-location" required placeholder="z. B. U-Bahn Alexanderplatz"
+                           class="w-full px-4 py-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <button type="submit" id="submit-btn"
+                        class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg transition-all transform active:scale-98">
+                    Meldung absenden & KI-Matching starten
+                </button>
+            </form>
+        </section>
+
+        <!-- KI-Ergebnis -->
+        <section id="result-container" class="hidden mt-8 bg-gray-900 border border-indigo-500/30 rounded-3xl p-8 shadow-2xl transition-all duration-500">
+            <h3 class="text-xl font-bold text-indigo-400 mb-4">KI-Analyse & Status</h3>
+            <div id="result-content" class="text-gray-300 space-y-4 whitespace-pre-line text-sm leading-relaxed"></div>
+            <button id="btn-reset" class="mt-6 w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-colors">
+                Neue Suche / Meldung starten
+            </button>
+        </section>
 
     </main>
 
-    <!-- Einfache JavaScript-Logik zur Vorbereitung der API-Kommunikation -->
-    <script>
-        function selectOption(type) {
-            console.log("Ausgewählter Typ:", type);
-            alert("Du hast '" + (type === 'lost' ? 'Verloren' : 'Gefunden') + "' ausgewählt! Hier leiten wir den User als nächstes zum passenden Formular weiter.");
-            // Hier folgt später die Weiterleitung oder das Einblenden des Formulars
-        }
-    </script>
-
+    <!-- Ausgelagerte JavaScript-Logik -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

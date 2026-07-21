@@ -1,0 +1,27 @@
+/* Custom CSS für Visual Nudging & Mikro-Interaktionen */
+
+/* Sanftes Glühen bei Fokussierung */
+input:focus, textarea:focus {
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+}
+
+/* Klick-Feedback für Buttons */
+.active\:scale-98:active {
+    transform: scale(0.98);
+}
+
+/* Sanfte Einblend-Animation für Formular & Ergebnis */
+#form-container, #result-container {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
