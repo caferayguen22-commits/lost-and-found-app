@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnRefresh) btnRefresh.addEventListener('click', loadDashboardItems);
     itemForm.addEventListener('submit', handleFormSubmit);
 
-    // Event Listener für Kategorien (Dynamischer Placeholder & Sicherheitstipp)
+    // Event Listener für Kategorien
     categoryInputs.forEach(input => {
         input.addEventListener('change', (e) => {
             updateCategoryUI(e.target.value);
@@ -66,14 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openForm(type) {
-        // WICHTIG: Formular vor jedem Öffnen leeren, um alte Eingaben zu löschen!
+        // Formular vor jedem Öffnen leeren
         itemForm.reset();
 
         itemTypeInput.value = type;
         formContainer.classList.remove('hidden');
         resultContainer.classList.add('hidden');
 
-        // Standard-Kategorie (Smartphone) UI anpassen
+        // Standard-Kategorie UI anpassen
         const defaultCategory = document.querySelector('input[name="category"]:checked')?.value || 'Smartphone';
         updateCategoryUI(defaultCategory);
 
@@ -154,8 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleFormSubmit(event) {
         event.preventDefault();
 
+        // SCHUTZ VOR DOPPELT-KLICKEN: Button sofort sperren & Text anpassen
         submitBtn.disabled = true;
-        submitBtn.innerText = "Analyse läuft... Bitte warten...";
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        submitBtn.innerText = "⏳ KI-Matching läuft... Bitte nicht schließen...";
 
         const selectedCategory = document.querySelector('input[name="category"]:checked')?.value || 'Sonstiges';
 
@@ -179,7 +181,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 formContainer.classList.add('hidden');
                 resultContainer.classList.remove('hidden');
-                resultContent.innerText = data.ai_report;
+
+                // Bestätigungshinweis + KI-Bericht zusammensetzen
+                const confirmationBanner = `✅ MELDUNG ERFOLGREICH ERFASST!\n` +
+                    `--------------------------------------------------\n` +
+                    `💡 Hinweis: Hast du alle wichtigen Details (Kratzer, Hülle, Farbe) angegeben? Je genauer die Angaben, desto präziser matchen unsere Algorithmen.\n\n`;
+
+                resultContent.innerText = confirmationBanner + data.ai_report;
                 resultContainer.scrollIntoView({ behavior: 'smooth' });
                 loadDashboardItems();
             } else {
@@ -189,7 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Verbindungsfehler zum Server.");
             console.error(error);
         } finally {
+            // Button wieder freigeben
             submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             submitBtn.innerText = "Meldung absenden & KI-Matching starten";
         }
     }
