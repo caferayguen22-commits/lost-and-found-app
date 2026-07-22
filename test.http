@@ -1,5 +1,9 @@
-### GET request to example server
-GET https://examples.http-client.intellij.net/get
-    ?generated-in=PyCharm
+POST http://localhost:5000/api/items
+Content-Type: application/json
 
-###
+{
+  "type": "Gefunden",
+  "category": "U-Bahn",
+  "station": "Alexanderplatz",
+  "item_description": "Schwarze Ledergeldbörse"
+}
