@@ -56,6 +56,7 @@ def create_item():
         }), 400
 
     # Extraktion der relevanten Felder für die Verarbeitung
+    category = data.get('category', 'Sonstiges')
     title = data.get('title', 'Unbekannter Gegenstand')
     description = data.get('description', 'Keine Beschreibung vorhanden')
     location = data.get('location', 'Kein spezifischer Ort angegeben')

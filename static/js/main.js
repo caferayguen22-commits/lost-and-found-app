@@ -13,12 +13,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = document.getElementById('submit-btn');
 
     const itemTypeInput = document.getElementById('item-type');
+    const itemTitleInput = document.getElementById('item-title');
     const formTitle = document.getElementById('form-title');
     const hintBox = document.getElementById('hint-box');
     const resultContent = document.getElementById('result-content');
 
     const categoryInputs = document.querySelectorAll('input[name="category"]');
     const safetyTipText = document.getElementById('safety-tip-text');
+
+    // Mappings für dynamische Placeholders & Sicherheitstipps
+    const categoryConfig = {
+        'Smartphone': {
+            placeholder: 'z. B. iPhone 15 Pro Max, Samsung Galaxy S24',
+            safetyTip: 'Tipp für die Übergabe: Verabredet euch an einem gut erreichbaren, öffentlichen Ort in eurer Nähe – genau wie bei Kleinanzeigen.'
+        },
+        'Schlüssel': {
+            placeholder: 'z. B. Haustürschlüssel mit rotem Anhänger',
+            safetyTip: 'Sicherheitstipp: Da Schlüssel direkt zur Haustür führen, verabredet euch am besten an einem belebten öffentlichen Ort oder nutzt eine Polizeidienststelle zur Übergabe.'
+        },
+        'Geldbörse': {
+            placeholder: 'z. B. Schwarzes Leder-Portemonnaie, Ausweis enthalten',
+            safetyTip: 'Tipp für die Übergabe: Verabredet euch an einem gut erreichbaren, öffentlichen Ort in eurer Nähe.'
+        },
+        'Sonstiges': {
+            placeholder: 'z. B. Blaues Rucksack, Brille, Regenschirm',
+            safetyTip: 'Tipp für die Übergabe: Verabredet euch an einem gut erreichbaren, öffentlichen Ort in eurer Nähe.'
+        }
+    };
 
     // Event Listener für Buttons
     btnLost.addEventListener('click', () => openForm('lost'));
@@ -28,25 +49,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnRefresh) btnRefresh.addEventListener('click', loadDashboardItems);
     itemForm.addEventListener('submit', handleFormSubmit);
 
-    // Event Listener für Kategorien (Dynamischer Sicherheitstipp)
+    // Event Listener für Kategorien (Dynamischer Placeholder & Sicherheitstipp)
     categoryInputs.forEach(input => {
         input.addEventListener('change', (e) => {
-            const selectedCategory = e.target.value;
-            if (selectedCategory === 'Schlüssel') {
-                safetyTipText.innerText = "Sicherheitstipp: Da Schlüssel direkt zur Haustür führen, verabredet euch am besten an einem belebten öffentlichen Ort oder nutzt eine Polizeidienststelle zur Übergabe.";
-            } else {
-                safetyTipText.innerText = "Tipp für die Übergabe: Verabredet euch an einem gut erreichbaren, öffentlichen Ort in eurer Nähe – genau wie bei Kleinanzeigen.";
-            }
+            updateCategoryUI(e.target.value);
         });
     });
 
     // Beim ersten Laden direkt Dashboard befüllen
     loadDashboardItems();
 
+    function updateCategoryUI(category) {
+        const config = categoryConfig[category] || categoryConfig['Sonstiges'];
+        if (itemTitleInput) itemTitleInput.placeholder = config.placeholder;
+        if (safetyTipText) safetyTipText.innerText = config.safetyTip;
+    }
+
     function openForm(type) {
+        // WICHTIG: Formular vor jedem Öffnen leeren, um alte Eingaben zu löschen!
+        itemForm.reset();
+
         itemTypeInput.value = type;
         formContainer.classList.remove('hidden');
         resultContainer.classList.add('hidden');
+
+        // Standard-Kategorie (Smartphone) UI anpassen
+        const defaultCategory = document.querySelector('input[name="category"]:checked')?.value || 'Smartphone';
+        updateCategoryUI(defaultCategory);
 
         if (type === 'found') {
             formTitle.innerText = "Fundgegenstand erfassen";
