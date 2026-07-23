@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (type === 'found') {
             formTitle.innerText = "Fundgegenstand erfassen";
-            hintBox.innerText = "Danke für deine Ehrlichkeit! Präzise Details zu Farbe, Schäden oder Sperrbildschirmen erhöhen die Chance extrem, den Eigentümer sofort zu finden.";
+            hintBox.innerText = "Danke für deine Ehrlichkeit! Präzise Details zu Farbe, Schäden oder Besonderheiten erhöhen die Chance extrem, den Eigentümer sofort zu finden.";
         } else {
             formTitle.innerText = "Verlustmeldung aufgeben";
             hintBox.innerText = "Beschreibe deinen Gegenstand so genau wie möglich. Unsere KI durchsucht sofort alle vorliegenden Fundmeldungen nach einer Übereinstimmung.";
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // SCHUTZ VOR DOPPELT-KLICKEN: Button sofort sperren & Text anpassen
         submitBtn.disabled = true;
         submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        submitBtn.innerText = "⏳ KI-Matching läuft... Bitte nicht schließen...";
+        submitBtn.innerText = "⏳ KI-Matching & Ortsprüfung läuft... Bitte nicht schließen...";
 
         const selectedCategory = document.querySelector('input[name="category"]:checked')?.value || 'Sonstiges';
 
@@ -168,6 +168,16 @@ document.addEventListener('DOMContentLoaded', () => {
             description: document.getElementById('item-description').value,
             location: document.getElementById('item-location').value
         };
+
+        // Kategorienspezifische Hinweise für den Abschluss-Banner
+        const categoryDetailHints = {
+            'Smartphone': 'Hülle, Displaykratzer, Risse oder Sperrbildschirm-Motiv',
+            'Schlüssel': 'Anzahl der Schlüssel, Anhänger, Gravuren oder Schlüsselmarke (z.B. ABUS)',
+            'Geldbörse': 'Material, Farbe, Markenlogo oder enthaltene Karten (ohne sensible Daten)',
+            'Sonstiges': 'Besondere Merkmale, Farbe, Zustand, Inhalt oder Markennamen'
+        };
+
+        const currentHint = categoryDetailHints[selectedCategory] || categoryDetailHints['Sonstiges'];
 
         try {
             const response = await fetch('/api/items', {
@@ -185,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Bestätigungshinweis + KI-Bericht zusammensetzen
                 const confirmationBanner = `✅ MELDUNG ERFOLGREICH ERFASST!\n` +
                     `--------------------------------------------------\n` +
-                    `💡 Hinweis: Hast du alle wichtigen Details (Kratzer, Hülle, Farbe) angegeben? Je genauer die Angaben, desto präziser matchen unsere Algorithmen.\n\n`;
+                    `💡 Hinweis: Hast du alle wichtigen Details wie ${currentHint} angegeben? Je genauer deine Angaben, desto präziser matchen unsere Algorithmen.\n\n`;
 
                 resultContent.innerText = confirmationBanner + data.ai_report;
                 resultContainer.scrollIntoView({ behavior: 'smooth' });

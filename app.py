@@ -30,13 +30,13 @@ def home():
     return render_template('index.html')
 
 
-# CRUD: CREATE (Erstellen einer Meldung inklusive KI-Bericht und Matching)
+# CRUD: CREATE (Erstellen einer Meldung inklusive KI-Bericht, Ort-Korrektur & Matching)
 @app.route('/api/items', methods=['POST'])
 def create_item():
     """
     Endpunkt zum Erstellen einer neuen Meldung (Fund oder Verlust).
-    Validiert den Typ strikt und gleicht Funde mittels KI gegen Verlustmeldungen ab.
-    Integriert ein psychologisch optimiertes, motivierendes Belohnungssystem.
+    Validiert den Typ strikt, korrigiert Tippfehler bei Berliner Ortsangaben (inkl. Bezirk),
+    gleicht Funde mittels KI gegen Verlustmeldungen ab und gibt Empfehlungen für Abgabestationen.
     """
     data = request.get_json()
 
@@ -47,7 +47,7 @@ def create_item():
             "message": "Keine Daten übergeben."
         }), 400
 
-    # Strikte Validierung des Typs (Verhindert Fehlinterpretationen der API)
+    # Strikte Validierung des Typs
     item_type = data.get('type')
     if item_type not in ['lost', 'found']:
         return jsonify({
@@ -55,30 +55,26 @@ def create_item():
             "message": "Ungültiger oder fehlender Typ. Erlaubt sind ausschließlich 'lost' oder 'found'."
         }), 400
 
-    # Extraktion der relevanten Felder für die Verarbeitung
+    # Extraktion der relevanten Felder
     category = data.get('category', 'Sonstiges')
     title = data.get('title', 'Unbekannter Gegenstand')
     description = data.get('description', 'Keine Beschreibung vorhanden')
-    location = data.get('location', 'Kein spezifischer Ort angegeben')
+    raw_location = data.get('location', 'Kein spezifischer Ort angegeben')
 
     # Psychologisch optimierter Hinweis zur Motivierung des Nutzers
     if item_type == 'found':
         data['user_hint'] = (
             "Danke, dass du ein ehrlicher Finder bist! Hilf dem suchenden Besitzer, "
-            "seinen Gegenstand schnell wiederzufinden: Je genauer du Details wie "
-            "Hülle (Farbe/Material), Displaykratzer, Risse, Schäden oder das "
-            "Sperrbildschirm-Hintergrundbild beschreibst, desto sicherer schlägt unser "
-            "automatisches KI-Matching an."
+            "seinen Gegenstand schnell wiederzufinden: Je genauer du Details beschreibst, "
+            "desto sicherer schlägt unser automatisches KI-Matching an."
         )
     else:
         data['user_hint'] = (
             "Um die Chancen für ein erfolgreiches Matching zu maximieren, beschreibe "
-            "deinen Verlust bitte so präzise wie möglich (z. B. besondere Merkmale, "
-            "Kratzer, Hüllen oder Hintergrundbilder)."
+            "deinen Verlust bitte so präzise wie möglich."
         )
 
     try:
-        # Fall 1: Ein Gegenstand wurde gefunden -> Matching-Prozess starten
         if item_type == 'found':
             # Abrufen aller existierenden Verlustmeldungen aus der Datenbank
             lost_items_cursor = items_collection.find({"type": "lost"})
@@ -86,22 +82,42 @@ def create_item():
             for item in lost_items_cursor:
                 lost_items_list.append({
                     "id": str(item['_id']),
+                    "category": item.get('category', 'Sonstiges'),
                     "title": item.get('title'),
                     "description": item.get('description'),
                     "location": item.get('location'),
                 })
 
-            # Formulierung des Prompts für Berichterstellung und Matching-Analyse (Gamified & Token-schonend)
+            # Abrufen aller registrierten Berliner Abgabestationen/Polizeiabschnitte
+            stations_cursor = db['berlin_stations'].find()
+            stations_list = []
+            for station in stations_cursor:
+                stations_list.append({
+                    "name": station.get('name'),
+                    "address": station.get('address'),
+                    "district": station.get('district'),
+                    "serves_category": station.get('serves_category')
+                })
+
+            # Prompt mit Ort-Korrektur, Matching und Abgabestationen
             prompt = (
                 f"=== NEUER FUNDGEGENSTAND ===\n"
+                f"Kategorie: {category}\n"
                 f"Gegenstand: {title}\n"
                 f"Beschreibung: {description}\n"
-                f"Fundort: {location}\n\n"
+                f"Eingegebener Ort vom Nutzer: {raw_location}\n\n"
                 f"=== EXISTIERENDE VERLUSTMELDUNGEN IN DER DATENBANK ===\n"
                 f"{lost_items_list}\n\n"
+                f"=== VERFÜGBARE BERLINER ABGABESTATIONEN / POLIZEIABSCHNITTE ===\n"
+                f"{stations_list[:20]}\n\n"
                 f"Aufgaben:\n"
-                f"1. Erstelle eine ultrakurze, packende Zusammenfassung des Fundes. Nutze keine Emojis! Mach es modern, energiegeladen und leicht lesbar.\n"
-                f"2. Vergleiche den Fund mit den Verlustmeldungen. Wenn ein Match existiert, berechne die Wahrscheinlichkeit in Prozent und feiere den Finder psychologisch als potenziellen Helden, der kurz davor steht, jemandes Tag zu retten! Nenne die Match-ID deutlich und hebe Übereinstimmungen (Farbe, Zustand, Details) prägnant hervor. Falls kein Match existiert, motiviere kurz weiterzusuchen."
+                f"1. ORTS-CORRECTION (BERLIN): Korrigiere eventuelle Rechtschreibfehler im eingegebenen Ort ('{raw_location}') "
+                f"und ordne ihn eindeutig dem passenden Berliner Bezirk / Stadtteil zu (z.B. aus 'hermanplatz' wird 'U Hermannplatz (Neukölln)'). "
+                f"Schreibe ganz oben als erste Zeile genau dieses Format:\n"
+                f"**KORRIGIERTER ORT:** [Genaue Ortsbezeichnung inkl. Bezirk, Berlin]\n\n"
+                f"2. ZUSAMMENFASSUNG: Erstelle eine ultrakurze, packende Zusammenfassung des Fundes. Keine Emojis!\n"
+                f"3. MATCHING-ANALYSE: Vergleiche den Fund mit den Verlustmeldungen. Bei einem Match feiere den Finder psychologisch als Helden! Nenne die Match-ID und Wahrscheinlichkeit in %.\n"
+                f"4. EMPFEHLUNG ZUR ABGABE: Gib dem Finder basierend auf Ort und Kategorie ({category}) eine konkrete Empfehlung aus der Stationen-Liste, wo er den Gegenstand in Berlin (z. B. Polizeiabschnitt, BVG/S-Bahn Fundbüro) am besten abgeben kann."
             )
 
             ai_response = openai_client.chat.completions.create(
@@ -110,38 +126,10 @@ def create_item():
                     {
                         "role": "system",
                         "content": (
-                            "Du bist das smarte, dynamische Herzstück unserer Lost & Found Community. "
+                            "Du bist das smarte, dynamische Herzstück unserer Lost & Found Community in Berlin. "
                             "Deine Sprache ist modern, klar, absolut nahbar, motivierend und direkt. Verwende KEINE Emojis. "
                             "Nutze psychologische Trigger: Gib dem Finder das Gefühl, ein Held auf einer Mission zu sein. "
-                            "Vermeide bürokratische Formulierungen wie 'Vorfallsbericht', 'Maßnahmen' oder 'Unterschrift'. "
-                            "Arbeite mit kurzen Sätzen, klaren Markdown-Hervorhebungen und maximaler Übersichtlichkeit."
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=0.6
-            )
-            data['ai_report'] = ai_response.choices[0].message.content
-
-        # Fall 2: Ein Gegenstand wird als verloren gemeldet -> Nur Bericht generieren
-        else:
-            prompt = (
-                f"Erstelle eine moderne, direkt auf den Punkt kommende Zusammenfassung für diese Verlustmeldung.\n"
-                f"Gegenstand: {title}\n"
-                f"Beschreibung: {description}\n"
-                f"Verlustort: {location}"
-            )
-            ai_response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Erstelle eine kurze, moderne und übersichtliche Zusammenfassung einer Verlustmeldung. "
-                            "Nutze KEINE Emojis. Die Sprache soll empathisch, locker, direkt und klar strukturiert sein – absolut kein Behördenstil."
+                            "Achte penibel darauf, Orte in Berlin korrekt zu schreiben und den Bezirk hinzuzufügen."
                         )
                     },
                     {"role": "user", "content": prompt}
@@ -150,11 +138,36 @@ def create_item():
             )
             data['ai_report'] = ai_response.choices[0].message.content
 
+        else:
+            # Verlustmeldung: Auch hier lassen wir den Ort prüfen/korrigieren
+            prompt = (
+                f"=== NEUE VERLUSTMELDUNG ===\n"
+                f"Kategorie: {category}\n"
+                f"Gegenstand: {title}\n"
+                f"Beschreibung: {description}\n"
+                f"Eingegebener Verlustort: {raw_location}\n\n"
+                f"Aufgabe:\n"
+                f"1. Korrigiere eventuelle Rechtschreibfehler beim Ort ('{raw_location}') und füge den Berliner Bezirk hinzu. "
+                f"Schreibe ganz oben erste Zeile:\n**KORRIGIERTER ORT:** [Genaue Ortsbezeichnung inkl. Bezirk, Berlin]\n\n"
+                f"2. Erstelle eine kurze, empathische und moderne Zusammenfassung für die Verlustmeldung. Keine Emojis."
+            )
+            ai_response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Erstelle eine kurze, moderne Zusammenfassung einer Verlustmeldung. Keine Emojis."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            data['ai_report'] = ai_response.choices[0].message.content
+
     except Exception as e:
-        # Fallback-Verhalten bei API-Fehlern
         data['ai_report'] = f"KI-Bericht konnte nicht generiert werden. Fehler: {str(e)}"
 
-    # Einfügen des validierten und erweiterten Dokuments in die MongoDB
+    # Einfügen des Dokuments in die MongoDB
     result = items_collection.insert_one(data)
 
     # Rückmeldung an den Client
