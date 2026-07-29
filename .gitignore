@@ -3,3 +3,6 @@
 # KI & IDE Kontext-Dateien
 PROJECT_CONTEXT.md
 .ai/
+__pycache__/
+*.pyc
+.venv/
