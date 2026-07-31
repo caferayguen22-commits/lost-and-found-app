@@ -5,6 +5,9 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId
 from openai import OpenAI, OpenAIError
+from location_service import geocode_berlin_address
+from prompt_service import build_found_prompt, build_lost_prompt
+from product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
 
 # Umweltvariablen laden
 load_dotenv()
@@ -48,6 +51,14 @@ def normalize_category(cat: str) -> str:
 def home():
     return render_template('index.html')
 
+@app.route('/api/product-catalog', methods=['GET'])
+def get_product_catalog():
+    return jsonify({
+        "brands": PRODUCT_DB,
+        "colors": COLOR_OPTIONS,
+        "cases": CASE_OPTIONS_BY_CATEGORY
+    }), 200
+
 
 @app.route('/api/items', methods=['POST'])
 def create_item():
@@ -68,6 +79,24 @@ def create_item():
     description = data.get('description', 'Keine Beschreibung vorhanden')
     raw_location = data.get('location', 'Kein spezifischer Ort angegeben')
     current_location = data.get('current_location', raw_location)
+
+    # --- NEU: echte Standortkorrektur statt KI-Raten ---
+    location_data = geocode_berlin_address(raw_location)
+
+    if location_data:
+        corrected_location = (
+            f"{location_data.get('road') or raw_location} "
+            f"{location_data.get('house_number') or ''}, "
+            f"{location_data.get('postcode') or ''} Berlin "
+            f"({location_data.get('district') or 'Berirk unbekannt'})"
+        ).strip()
+        data['corrected_location'] = corrected_location
+        data['location_details'] = location_data  # lat/lot etc. für später (z.B. Stationsdistanz)
+    else:
+        corrected_location = raw_location
+        data['corrected_location'] = raw_location
+        data['location_details'] = None
+
 
     if item_type == 'found':
         data['user_hint'] = (
@@ -104,50 +133,24 @@ def create_item():
                     "serves_category": station.get('serves_category')
                 }
                 for station in stations_cursor
-            ]
+            ][:20]
 
-            prompt = (
-                f"=== NEUER FUNDGEGENSTAND ===\n"
-                f"Kategorie: {category}\n"
-                f"Gegenstand: {title}\n"
-                f"Beschreibung: {description}\n"
-                f"Fundort: {raw_location}\n"
-                f"Aktueller Standort des Finders: {current_location}\n\n"
-                f"=== GEFILTERTE VERLUSTMELDUNGEN (NUR KATEGORIE '{category}') ===\n"
-                f"{lost_items_list}\n\n"
-                f"=== VERFÜGBARE BERLINER ABGABESTATIONEN ===\n"
-                f"{stations_list[:20]}\n\n"
-                f"Aufgaben:\n"
-                f"1. ORTS-CORRECTOR (BERLIN): Prüfe den Fundort ('{raw_location}') auf Rechtschreibung. "
-                f"Schreibe ganz oben als ERSTE ZEILE exakt folgendes Format mit 5-stelliger Postleitzahl:\n"
-                f"**KORRIGIERTER ORT:** [Straße + Hausnummer], [5-stellige PLZ] Berlin ([Bezirk])\n\n"
-                f"2. ZUSAMMENFASSUNG: Erstelle eine ultrakurze, packende Zusammenfassung. Keine Emojis!\n"
-                f"3. MATCHING-ANALYSE: Vergleiche den Fund AUSSCHLIESSLICH mit den gefilterten Verlustmeldungen. "
-                f"Nenne bei einem Match die Match-ID und die Wahrscheinlichkeit in %.\n"
-                f"4. EMPFEHLUNG & WEGBESCHREIBUNG: Empfiehl eine passende Abgabestation und gib eine kurze, "
-                f"praktische Wegbeschreibung ausgehend vom aktuellen Standort ('{current_location}') "
-                f"mit konkreten Berliner ÖPNV-Linien (U-Bahn/S-Bahn/Bus)."
-            )
-
-            system_message = (
-                "Du bist das smarte, dynamische Herzstück unserer Lost & Found Community in Berlin. "
-                "Deine Sprache ist modern, klar, absolut nahbar, motivierend und direkt. Verwende KEINE Emojis. "
-                "Nutze psychologische Trigger: Gib dem Finder das Gefühl, ein Held auf einer Mission zu sein. "
-                "Achte penibel darauf, Orte in Berlin korrekt zu schreiben und den Bezirk hinzuzufügen."
+            system_message, prompt = build_found_prompt(
+                category=category,
+                title=title,
+                description=description,
+                corrected_location=corrected_location,
+                current_location=current_location,
+                lost_items_list=lost_items_list,
+                stations_list=stations_list
             )
         else:
-            prompt = (
-                f"=== NEUE VERLUSTMELDUNG ===\n"
-                f"Kategorie: {category}\n"
-                f"Gegenstand: {title}\n"
-                f"Beschreibung: {description}\n"
-                f"Eingegebener Verlustort: {raw_location}\n\n"
-                f"Aufgabe:\n"
-                f"1. Korrigiere eventuelle Rechtschreibfehler beim Ort ('{raw_location}') und füge den Berliner Bezirk hinzu. "
-                f"Schreibe ganz oben erste Zeile:\n**KORRIGIERTER ORT:** [Genaue Ortsbezeichnung inkl. Bezirk, Berlin]\n\n"
-                f"2. Erstelle eine kurze, empathische und moderne Zusammenfassung für die Verlustmeldung. Keine Emojis."
+            system_message, prompt = build_lost_prompt(
+                category=category,
+                title=title,
+                description=description,
+                corrected_location=corrected_location
             )
-            system_message = "Erstelle eine kurze, moderne Zusammenfassung einer Verlustmeldung. Keine Emojis."
 
         ai_response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
