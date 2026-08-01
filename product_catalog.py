@@ -94,7 +94,19 @@ PRODUCT_DB = {
     }
 }
 
-COLOR_OPTIONS = ['Schwarz', 'Weiß', 'Silber', 'Grau', 'Blau', 'Rot', 'Grün', 'Gold', 'Rosé/Pink', 'Bunt']
+COLOR_OPTIONS = [
+    {'name': 'Schwarz', 'hex': '#1c1c1e'},
+    {'name': 'Weiß', 'hex': '#f5f5f5'},
+    {'name': 'Silber', 'hex': '#c0c0c0'},
+    {'name': 'Grau', 'hex': '#8e8e93'},
+    {'name': 'Blau', 'hex': '#0a84ff'},
+    {'name': 'Rot', 'hex': '#ff3b30'},
+    {'name': 'Grün', 'hex': '#34c759'},
+    {'name': 'Gold', 'hex': '#d4af37'},
+    {'name': 'Rosé/Pink', 'hex': '#ff2d92'},
+    {'name': 'Bunt', 'hex': None, 'pattern': 'bunt'},
+    {'name': 'Sonstiges', 'hex': None}
+]
 
 CASE_OPTIONS_BY_CATEGORY = {
     'Smartphone': {'label': 'Hülle/Case', 'options': ['Keine Hülle', 'Transparente Hülle', 'Bunte Hülle', 'Lederhülle', 'Sonstige Hülle']},

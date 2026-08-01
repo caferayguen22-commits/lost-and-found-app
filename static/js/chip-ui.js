@@ -10,6 +10,35 @@ export function createChip(label, onClick) {
     return btn;
 }
 
+// Farb-Chip: farbiger Punkt UND Text-Label zusammen — nie nur Farbe allein,
+// damit auch farbenblinde Nutzer die Auswahl sicher treffen können.
+export function createColorChip(color, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip-btn flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-indigo-400 text-gray-700 dark:text-gray-300 transition-all';
+
+    const dot = document.createElement('span');
+    dot.className = 'w-3.5 h-3.5 rounded-full border border-gray-300 dark:border-gray-700 flex-shrink-0';
+
+    if (color.hex) {
+        dot.style.background = color.hex;
+    } else if (color.pattern === 'bunt') {
+        dot.style.background = 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)';
+    } else {
+        // "Sonstiges": kein Farbwert vorhanden -> neutrales Symbol statt Punkt
+        dot.classList.add('flex', 'items-center', 'justify-center', 'text-[9px]', 'bg-gray-300', 'dark:bg-gray-700');
+        dot.innerText = '?';
+    }
+
+    const label = document.createElement('span');
+    label.innerText = color.name;
+
+    btn.appendChild(dot);
+    btn.appendChild(label);
+    btn.addEventListener('click', onClick);
+    return btn;
+}
+
 export function setActiveChip(container, activeBtn) {
     container.querySelectorAll('.chip-btn').forEach(b => {
         b.classList.remove('border-indigo-500', 'bg-indigo-100', 'dark:bg-indigo-950/40', 'text-gray-900', 'dark:text-white');
@@ -17,6 +46,8 @@ export function setActiveChip(container, activeBtn) {
     activeBtn.classList.add('border-indigo-500', 'bg-indigo-100', 'dark:bg-indigo-950/40', 'text-gray-900', 'dark:text-white');
 }
 
+// Steuert jetzt NUR NOCH, ob Marke/Serie/Variante-Chips sichtbar sind.
+// Farbe & Hülle sind davon komplett unabhängig geworden.
 export function setMode(mode) {
     state.currentMode = mode;
     const activeClasses = ['border-indigo-500', 'bg-indigo-100', 'dark:bg-indigo-950/30', 'text-gray-900', 'dark:text-white'];
@@ -30,14 +61,10 @@ export function setMode(mode) {
         dom.modeExpertBtn.classList.add(...activeClasses);
         dom.modeSimpleBtn.classList.add(...inactiveClasses);
         dom.expertModeContainer.classList.remove('hidden');
-        dom.simpleModeContainer.classList.add('hidden');
     } else {
         dom.modeSimpleBtn.classList.add(...activeClasses);
         dom.modeExpertBtn.classList.add(...inactiveClasses);
         dom.expertModeContainer.classList.add('hidden');
-        dom.simpleModeContainer.classList.remove('hidden');
-        const category = document.querySelector('input[name="category"]:checked')?.value || 'Sonstiges';
-        renderSimpleMode(category);
     }
 }
 
@@ -74,9 +101,8 @@ export function updateCategoryUI(category) {
         dom.caseSelectionContainer.classList.add('hidden');
     }
 
-    if (state.currentMode === 'simple') {
-        renderSimpleMode(category);
-    }
+    // Farbe & Hülle: bei jedem Kategoriewechsel neu aufbauen, unabhängig vom Modus.
+    renderColorAndCaseChips(category);
 
     if (category === 'Kopfhörer') {
         dom.safetyTipText.innerText = 'Tipp: Ladecase oder In-Ear einzeln verloren? Erwähne es in der Beschreibung!';
@@ -134,16 +160,16 @@ export function renderVariants(variants) {
     });
 }
 
-export function renderSimpleMode(category) {
+export function renderColorAndCaseChips(category) {
     dom.colorChipsDiv.innerHTML = '';
     dom.caseChipsDiv.innerHTML = '';
     state.selectedColor = null;
     state.selectedCase = null;
 
     state.colorOptions.forEach(color => {
-        const btn = createChip(color, () => {
+        const btn = createColorChip(color, () => {
             setActiveChip(dom.colorChipsDiv, btn);
-            state.selectedColor = color;
+            state.selectedColor = color.name;
         });
         dom.colorChipsDiv.appendChild(btn);
     });

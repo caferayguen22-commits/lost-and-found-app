@@ -31,7 +31,6 @@ export const dom = {
     variantChipsDiv: document.getElementById('variant-chips'),
 
     expertModeContainer: document.getElementById('expert-mode-container'),
-    simpleModeContainer: document.getElementById('simple-mode-container'),
     modeToggleContainer: document.getElementById('mode-toggle-container'),
     modeExpertBtn: document.getElementById('mode-expert-btn'),
     modeSimpleBtn: document.getElementById('mode-simple-btn'),
