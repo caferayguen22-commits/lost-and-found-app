@@ -1,7 +1,7 @@
 import { dom } from './dom.js';
 import { state } from './state.js';
 import { setMode, updateCategoryUI } from './chip-ui.js';
-import { loadDashboardItems } from './dashboard.js';
+import { loadDashboardItems, filterGridByCategory } from './dashboard.js';
 
 export function initImageInput() {
     if (dom.imageInput) {
@@ -92,10 +92,36 @@ export async function handleFormSubmit(event) {
             body: JSON.stringify(payload)
         });
         const data = await response.json();
+
         if (response.ok) {
-            dom.formContainer.classList.add('hidden');
-            dom.resultContainer.classList.remove('hidden');
-            dom.resultContent.innerText = `✅ MELDUNG ERFOLGREICH ERFASST!\n--------------------------------------------------\n` + data.ai_report;
+            let resultText = `✅ MELDUNG ERFOLGREICH ERFASST!\n--------------------------------------------------\n`;
+            resultText += `Deine Wartemarke: ${data.tracking_code}\n(merke sie dir gut, damit du den Status später abrufen kannst)\n\n`;
+            resultText += data.ai_summary || '';
+            if (data.match_found) {
+                resultText += `\n\n🎉 Möglicher Match gefunden! (${data.match_probability}% Wahrscheinlichkeit)`;
+            }
+            if (data.recommended_station) {
+                resultText += `\n\nEmpfohlene Abgabestation: ${data.recommended_station}`;
+            }
+
+            dom.resultContent.innerText = resultText;
+
+            // Bei erfolglosem Match gezielt die Gegenliste anbieten
+            dom.browseSuggestionContainer.innerHTML = '';
+            dom.browseSuggestionContainer.classList.add('hidden');
+            if (!data.match_found) {
+                const browseType = payload.type === 'lost' ? 'found' : 'lost';
+                const browseBtn = document.createElement('button');
+                browseBtn.type = 'button';
+                browseBtn.className = 'w-full py-3 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold rounded-xl transition-all';
+                browseBtn.innerText = `🔍 Gemeldete ${payload.category} durchsuchen`;
+                browseBtn.addEventListener('click', () => {
+                    filterGridByCategory(browseType, payload.category);
+                });
+                dom.browseSuggestionContainer.appendChild(browseBtn);
+                dom.browseSuggestionContainer.classList.remove('hidden');
+            }
+
             dom.resultContainer.scrollIntoView({ behavior: 'smooth' });
             loadDashboardItems();
         } else {
