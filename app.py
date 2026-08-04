@@ -1,4 +1,6 @@
 import os
+import secrets
+import json
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, render_template
 from pymongo import MongoClient
@@ -60,6 +62,10 @@ def get_product_catalog():
     }), 200
 
 
+def generate_tracking_code():
+    return secrets.token_hex(3).upper()  # z.B. 'A1B2C3'
+
+
 @app.route('/api/items', methods=['POST'])
 def create_item():
     data = request.get_json()
@@ -80,23 +86,25 @@ def create_item():
     raw_location = data.get('location', 'Kein spezifischer Ort angegeben')
     current_location = data.get('current_location', raw_location)
 
-    # --- NEU: echte Standortkorrektur statt KI-Raten ---
     location_data = geocode_berlin_address(raw_location)
-
     if location_data:
         corrected_location = (
             f"{location_data.get('road') or raw_location} "
             f"{location_data.get('house_number') or ''}, "
             f"{location_data.get('postcode') or ''} Berlin "
-            f"({location_data.get('district') or 'Berirk unbekannt'})"
+            f"({location_data.get('district') or 'Bezirk unbekannt'})"
         ).strip()
         data['corrected_location'] = corrected_location
-        data['location_details'] = location_data  # lat/lot etc. für später (z.B. Stationsdistanz)
+        data['location_details'] = location_data
     else:
         corrected_location = raw_location
         data['corrected_location'] = raw_location
         data['location_details'] = None
 
+    data['tracking_code'] = generate_tracking_code()
+    data['match_found'] = False
+    data['matched_item_id'] = None
+    data['match_probability'] = None
 
     if item_type == 'found':
         data['user_hint'] = (
@@ -110,20 +118,29 @@ def create_item():
             "deinen Verlust bitte so präzise wie möglich."
         )
 
+    # --- Bidirektionales Matching: IMMER gegen die jeweils andere Liste prüfen ---
+    opposite_type = 'lost' if item_type == 'found' else 'found'
+    other_items_cursor = items_collection.find({"type": opposite_type, "category": category})
+    other_items_list = [
+        {
+            "id": str(item['_id']),
+            "title": item.get('title'),
+            "description": item.get('description'),
+            "location": item.get('corrected_location', item.get('location')),
+        }
+        for item in other_items_cursor
+    ]
+
+    parsed_result = {
+        "summary": None,
+        "match_found": False,
+        "matched_item_id": None,
+        "match_probability": None,
+        "recommended_station": None
+    }
+
     try:
         if item_type == 'found':
-            lost_items_cursor = items_collection.find({"type": "lost", "category": category})
-            lost_items_list = [
-                {
-                    "id": str(item['_id']),
-                    "category": item.get('category', 'Sonstiges'),
-                    "title": item.get('title'),
-                    "description": item.get('description'),
-                    "location": item.get('location'),
-                }
-                for item in lost_items_cursor
-            ]
-
             stations_cursor = stations_collection.find()
             stations_list = [
                 {
@@ -141,7 +158,7 @@ def create_item():
                 description=description,
                 corrected_location=corrected_location,
                 current_location=current_location,
-                lost_items_list=lost_items_list,
+                other_items_list=other_items_list,
                 stations_list=stations_list
             )
         else:
@@ -149,7 +166,8 @@ def create_item():
                 category=category,
                 title=title,
                 description=description,
-                corrected_location=corrected_location
+                corrected_location=corrected_location,
+                other_items_list=other_items_list
             )
 
         ai_response = openai_client.chat.completions.create(
@@ -159,22 +177,62 @@ def create_item():
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
-            timeout=15.0
+            timeout=15.0,
+            response_format={"type": "json_object"}
         )
-        data['ai_report'] = ai_response.choices[0].message.content
+
+        parsed_result = json.loads(ai_response.choices[0].message.content)
 
     except OpenAIError as oe:
-        data['ai_report'] = f"KI-Bericht derzeit nicht verfügbar (OpenAI API Fehler: {str(oe)})."
+        parsed_result["summary"] = f"KI-Bericht derzeit nicht verfügbar (OpenAI API Fehler: {str(oe)})."
+    except json.JSONDecodeError:
+        parsed_result["summary"] = "KI-Antwort konnte nicht als JSON verarbeitet werden."
     except Exception as e:
-        data['ai_report'] = f"KI-Bericht konnte nicht generiert werden: {str(e)}"
+        parsed_result["summary"] = f"KI-Bericht konnte nicht generiert werden: {str(e)}"
+
+    data['ai_summary'] = parsed_result.get('summary')
+    data['recommended_station'] = parsed_result.get('recommended_station')
+
+    match_id = parsed_result.get('matched_item_id')
+    if parsed_result.get('match_found') and match_id:
+        try:
+            matched_object_id = ObjectId(match_id)
+            matched_doc = items_collection.find_one({"_id": matched_object_id})
+        except Exception:
+            matched_doc = None
+
+        if matched_doc:
+            data['match_found'] = True
+            data['matched_item_id'] = match_id
+            data['match_probability'] = parsed_result.get('match_probability')
+
+            items_collection.update_one(
+                {"_id": matched_object_id},
+                {"$set": {
+                    "match_found": True,
+                    "match_probability": parsed_result.get('match_probability')
+                }}
+            )
 
     result = items_collection.insert_one(data)
+    new_id = str(result.inserted_id)
+
+    # Dem gematchten Gegenstück nachträglich unsere eigene, neue ID eintragen
+    if data['match_found']:
+        items_collection.update_one(
+            {"_id": ObjectId(data['matched_item_id'])},
+            {"$set": {"matched_item_id": new_id}}
+        )
 
     return jsonify({
         "status": "success",
         "message": "Meldung erfolgreich angelegt.",
-        "id": str(result.inserted_id),
-        "ai_report": data['ai_report'],
+        "id": new_id,
+        "tracking_code": data['tracking_code'],
+        "ai_summary": data['ai_summary'],
+        "match_found": data['match_found'],
+        "match_probability": data['match_probability'],
+        "recommended_station": data['recommended_station'],
         "hint": data['user_hint']
     }), 201
 
