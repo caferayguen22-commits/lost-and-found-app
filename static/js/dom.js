@@ -8,7 +8,8 @@ export const dom = {
 
     formContainer: document.getElementById('form-container'),
     resultContainer: document.getElementById('result-container'),
-    itemsGrid: document.getElementById('items-grid'),
+    lostItemsGrid: document.getElementById('lost-items-grid'),
+    foundItemsGrid: document.getElementById('found-items-grid'),
     itemForm: document.getElementById('item-form'),
     submitBtn: document.getElementById('submit-btn'),
 
