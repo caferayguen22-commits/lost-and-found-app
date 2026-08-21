@@ -8,6 +8,7 @@ export const dom = {
 
     formContainer: document.getElementById('form-container'),
     resultContainer: document.getElementById('result-container'),
+    browseSuggestionContainer: document.getElementById('browse-suggestion-container'),
     lostItemsGrid: document.getElementById('lost-items-grid'),
     foundItemsGrid: document.getElementById('found-items-grid'),
     itemForm: document.getElementById('item-form'),
@@ -43,5 +44,6 @@ export const dom = {
 
     imageInput: document.getElementById('item-image'),
     themeToggleBtn: document.getElementById('theme-toggle'),
-    themeIcon: document.getElementById('theme-icon')
+    themeIcon: document.getElementById('theme-icon'),
+    itemEmailInput: document.getElementById('item-email')
 };

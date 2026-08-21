@@ -48,6 +48,7 @@ export function resetUI() {
 
 export async function handleFormSubmit(event) {
     event.preventDefault();
+    if (dom.submitBtn.disabled) return;
     dom.submitBtn.disabled = true;
     dom.submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
     dom.submitBtn.innerText = "⏳ KI-Matching läuft...";
@@ -82,6 +83,7 @@ export async function handleFormSubmit(event) {
         title: title,
         description: description,
         location: document.getElementById('item-location').value,
+        email: dom.itemEmailInput.value || null,
         image: state.base64Image
     };
 
@@ -94,6 +96,9 @@ export async function handleFormSubmit(event) {
         const data = await response.json();
 
         if (response.ok) {
+            dom.formContainer.classList.add('hidden');
+            dom.resultContainer.classList.remove('hidden');
+
             let resultText = `✅ MELDUNG ERFOLGREICH ERFASST!\n--------------------------------------------------\n`;
             resultText += `Deine Wartemarke: ${data.tracking_code}\n(merke sie dir gut, damit du den Status später abrufen kannst)\n\n`;
             resultText += data.ai_summary || '';

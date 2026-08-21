@@ -130,6 +130,11 @@
                 </div>
 
                 <div>
+                    <label for="item-email" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">E-Mail (optional, für Match-Benachrichtigung)</label>
+                    <input type="email" id="item-email" placeholder="deine@email.de" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Foto (Optional)</label>
                     <input type="file" id="item-image" accept="image/*" class="w-full px-4 py-2 text-xs bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-200 dark:hover:file:bg-indigo-900 cursor-pointer">
                 </div>
@@ -143,6 +148,7 @@
         <section id="result-container" class="hidden mt-8 bg-white dark:bg-gray-900 border border-indigo-300 dark:border-indigo-500/30 rounded-3xl p-8 shadow-2xl transition-all duration-500">
             <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">KI-Analyse & Status</h3>
             <div id="result-content" class="text-gray-700 dark:text-gray-300 space-y-4 whitespace-pre-line text-sm leading-relaxed"></div>
+            <div id="browse-suggestion-container" class="hidden mt-4"></div>
             <button id="btn-reset" class="mt-6 w-full py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-xl transition-colors">Neue Suche starten</button>
         </section>
 
@@ -170,6 +176,6 @@
         </section>
 
     </main>
-    <script type="module"src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

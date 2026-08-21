@@ -6,3 +6,5 @@ PROJECT_CONTEXT.md
 __pycache__/
 *.pyc
 .venv/
+CLAUDE.md
+.claude/

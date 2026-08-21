@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-PROMPTS_PATH = Path(__file__).parent / "prompts.json"
+PROMPTS_PATH = Path(__file__).resolve().parent.parent / "prompts.json"
 
 
 def _load_prompts() -> dict:

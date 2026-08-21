@@ -1,5 +1,8 @@
 import { dom } from './dom.js';
 
+let cachedLostItems = [];
+let cachedFoundItems = [];
+
 export function escapeHtml(text) {
     if (!text) return '';
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -44,9 +47,28 @@ function renderGrid(gridElement, items, emptyText) {
         gridElement.innerHTML = `<div class="col-span-full text-center py-8 text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800">${emptyText}</div>`;
         return;
     }
-    items.reverse().forEach(item => {
+    items.slice().reverse().forEach(item => {
         gridElement.appendChild(createItemCard(item));
     });
+}
+
+function removeFilterBanner(gridElement) {
+    const existing = gridElement.parentElement.querySelector('.filter-banner');
+    if (existing) existing.remove();
+}
+
+function showFilterBanner(gridElement, category, onReset) {
+    removeFilterBanner(gridElement);
+    const banner = document.createElement('div');
+    banner.className = 'filter-banner mb-3 flex items-center justify-between px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 text-sm text-indigo-700 dark:text-indigo-200';
+    banner.innerHTML = `<span>Gefiltert nach: <strong>${escapeHtml(category)}</strong></span>`;
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'text-xs font-semibold underline hover:no-underline';
+    resetBtn.innerText = 'Alle anzeigen';
+    resetBtn.addEventListener('click', onReset);
+    banner.appendChild(resetBtn);
+    gridElement.parentElement.insertBefore(banner, gridElement);
 }
 
 export async function loadDashboardItems() {
@@ -55,12 +77,30 @@ export async function loadDashboardItems() {
         const response = await fetch('/api/items');
         const items = await response.json();
 
-        const lostItems = items.filter(item => item.type === 'lost');
-        const foundItems = items.filter(item => item.type === 'found');
+        cachedLostItems = items.filter(item => item.type === 'lost');
+        cachedFoundItems = items.filter(item => item.type === 'found');
 
-        renderGrid(dom.lostItemsGrid, lostItems, 'Noch keine Verlustmeldungen vorhanden.');
-        renderGrid(dom.foundItemsGrid, foundItems, 'Noch keine Fundmeldungen vorhanden.');
+        removeFilterBanner(dom.lostItemsGrid);
+        removeFilterBanner(dom.foundItemsGrid);
+        renderGrid(dom.lostItemsGrid, cachedLostItems, 'Noch keine Verlustmeldungen vorhanden.');
+        renderGrid(dom.foundItemsGrid, cachedFoundItems, 'Noch keine Fundmeldungen vorhanden.');
     } catch (error) {
         console.error("Fehler beim Laden:", error);
     }
+}
+
+// type: 'lost' oder 'found' -- welche der beiden Listen gefiltert angezeigt wird
+export function filterGridByCategory(type, category) {
+    const gridElement = type === 'lost' ? dom.lostItemsGrid : dom.foundItemsGrid;
+    const sourceItems = type === 'lost' ? cachedLostItems : cachedFoundItems;
+    if (!gridElement) return;
+
+    const filtered = sourceItems.filter(item => item.category === category);
+    renderGrid(gridElement, filtered, `Keine ${category}-Meldungen in dieser Liste vorhanden.`);
+    showFilterBanner(gridElement, category, () => {
+        removeFilterBanner(gridElement);
+        renderGrid(gridElement, sourceItems, type === 'lost' ? 'Noch keine Verlustmeldungen vorhanden.' : 'Noch keine Fundmeldungen vorhanden.');
+    });
+
+    gridElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Meldungsstatus – Lost & Found Berlin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+</head>
+<body class="dark bg-gray-950 min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-lg w-full bg-gray-900 border border-gray-800 rounded-3xl p-8">
+        {% if found %}
+            <p class="text-xs text-gray-500 mb-2">Wartemarke: <span class="font-mono text-indigo-400">{{ item.tracking_code }}</span></p>
+            <h1 class="text-2xl font-bold text-white mb-4">{{ item.title }}</h1>
+            <p class="text-gray-400 text-sm mb-6">{{ item.description }}</p>
+
+            {% if item.match_found %}
+                <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-xl p-5">
+                    <p class="text-indigo-300 font-semibold mb-1">🎉 Möglicher Match gefunden!</p>
+                    <p class="text-sm text-gray-400">Wahrscheinlichkeit: {{ item.match_probability }}%</p>
+                </div>
+            {% else %}
+                <div class="bg-gray-800/50 border border-gray-700 rounded-xl p-5">
+                    <p class="text-gray-300">Noch kein Match gefunden. Schau später nochmal vorbei.</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <h1 class="text-xl font-bold text-white mb-2">Wartemarke nicht gefunden</h1>
+            <p class="text-gray-400 text-sm">Prüfe, ob du den Code richtig eingegeben hast.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
