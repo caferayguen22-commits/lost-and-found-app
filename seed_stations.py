@@ -1,6 +1,9 @@
 import os
+import time
 from pymongo import MongoClient
 from dotenv import load_dotenv
+
+from services.location_service import geocode_berlin_address
 
 load_dotenv()
 
@@ -54,7 +57,7 @@ berlin_stations = [
     {"name": "Polizeiabschnitt 23", "type": "Polizeidienststelle", "address": "Gothaer Str. 19, 10823 Berlin", "district": "Tempelhof-Schöneberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 24", "type": "Polizeidienststelle", "address": "Bürgerstr. 2, 12347 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 25", "type": "Polizeidienststelle", "address": "Eiswaldtstr. 18, 12249 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
-    {"name": "Polizeiabschnitt 26", "type": "Polizeidienststelle", "address": "Sonnentaler Weg 1, 14169 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
+    {"name": "Polizeiabschnitt 26", "type": "Polizeidienststelle", "address": "Rudolstädter Straße 79-81, 10713 Berlin", "district": "Charlottenburg-Wilmersdorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 27", "type": "Polizeidienststelle", "address": "Martin-Buber-Str. 12, 14163 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 28", "type": "Polizeidienststelle", "address": "Potsdamer Chaussee 63, 14129 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
 
@@ -73,7 +76,7 @@ berlin_stations = [
     {"name": "Polizeiabschnitt 44", "type": "Polizeidienststelle", "address": "Storkower Str. 134, 10407 Berlin", "district": "Pankow", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 45", "type": "Polizeidienststelle", "address": "Rathausstr. 27, 10178 Berlin", "district": "Mitte", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 46", "type": "Polizeidienststelle", "address": "Friesenstr. 16, 10965 Berlin", "district": "Friedrichshain-Kreuzberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
-    {"name": "Polizeiabschnitt 47", "type": "Polizeidienststelle", "address": "Krollstr. 10, 12247 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
+    {"name": "Polizeiabschnitt 47", "type": "Polizeidienststelle", "address": "Eiswaldtstraße 2-18, 12249 Berlin", "district": "Steglitz-Zehlendorf", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 48", "type": "Polizeidienststelle", "address": "Friedrich-Wilhelm-Str. 82, 12103 Berlin", "district": "Tempelhof-Schöneberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
 
     # --- DIREKTION 5 (OST: Marzahn-Hellersdorf, Lichtenberg, Treptow-Köpenick) ---
@@ -81,7 +84,7 @@ berlin_stations = [
     {"name": "Polizeiabschnitt 52", "type": "Polizeidienststelle", "address": "Wedekindstr. 10, 10243 Berlin", "district": "Friedrichshain-Kreuzberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 53", "type": "Polizeidienststelle", "address": "Sonnenallee 291, 12057 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 54", "type": "Polizeidienststelle", "address": "Rudower Str. 75, 12351 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
-    {"name": "Polizeiabschnitt 55", "type": "Polizeidienststelle", "address": "Pelikanstr. 21, 12355 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
+    {"name": "Polizeiabschnitt 55", "type": "Polizeidienststelle", "address": "Rollbergstraße 9, 12053 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 56", "type": "Polizeidienststelle", "address": "Regattastr. 16, 12527 Berlin", "district": "Treptow-Köpenick", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 61", "type": "Polizeidienststelle", "address": "Sonnenallee 291, 12057 Berlin", "district": "Neukölln", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
     {"name": "Polizeiabschnitt 62", "type": "Polizeidienststelle", "address": "Nöldnerstr. 31, 10317 Berlin", "district": "Lichtenberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."},
@@ -91,7 +94,35 @@ berlin_stations = [
     {"name": "Polizeiabschnitt 66", "type": "Polizeidienststelle", "address": "Prerower Platz 4, 13051 Berlin", "district": "Lichtenberg", "serves_category": "Straße / Sonstiges", "note": "24/7 erreichbar."}
 ]
 
+def geocode_stations():
+    """
+    Geocodiert einmalig alle Stationsadressen und ergänzt lat/lon direkt in
+    berlin_stations. Mehrfach vorkommende Adressen werden nur einmal
+    angefragt (Cache), zwischen echten Nominatim-Calls 1s Pause
+    (Nutzungsrichtlinie: max. 1 Request/Sekunde).
+    """
+    geocode_cache = {}
+    for station in berlin_stations:
+        address = station["address"]
+        if address not in geocode_cache:
+            location_data = geocode_berlin_address(address)
+            geocode_cache[address] = location_data
+            time.sleep(1)
+        else:
+            location_data = geocode_cache[address]
+
+        if location_data:
+            station["lat"] = location_data["lat"]
+            station["lon"] = location_data["lon"]
+        else:
+            station["lat"] = None
+            station["lon"] = None
+            print(f"[WARNUNG] Geocoding fehlgeschlagen für: {station['name']} ({address})")
+
+
 def seed_database():
+    geocode_stations()
+
     # Kollektion leeren
     stations_collection.delete_many({})
 

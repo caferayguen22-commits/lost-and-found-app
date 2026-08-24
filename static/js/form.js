@@ -87,6 +87,11 @@ export async function handleFormSubmit(event) {
         image: state.base64Image
     };
 
+    const currentLocation = dom.itemCurrentLocationInput.value.trim();
+    if (currentLocation) {
+        payload.current_location = currentLocation;
+    }
+
     try {
         const response = await fetch('/api/items', {
             method: 'POST',

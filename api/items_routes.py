@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 from openai import OpenAIError
 
 from services.db import items_collection, stations_collection, openai_client
-from services.location_service import geocode_berlin_address
+from services.location_service import geocode_berlin_address, haversine_distance_km
 from services.prompt_service import build_found_prompt, build_lost_prompt
 from services.product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
 from services.email_service import send_match_notification
@@ -34,8 +34,43 @@ def generate_tracking_code():
     return secrets.token_hex(3).upper()  # z.B. 'A1B2C3'
 
 
-def find_recommended_station(category):
-    """Deterministische Stationsempfehlung direkt aus MongoDB -- keine KI, keine Halluzination."""
+GENERAL_STATION_CATEGORY = "Straße / Sonstiges"
+
+
+def find_recommended_station(category, origin=None):
+    """
+    Deterministische Stationsempfehlung direkt aus MongoDB -- keine KI, keine
+    Halluzination. Sind in `origin` (dict mit 'lat'/'lon') Koordinaten
+    vorhanden, wird unter den passenden Kandidaten per Haversine-Formel
+    (reines Python) die wirklich nächstgelegene Station berechnet:
+    1. bevorzugt unter Stationen, die exakt `category` bedienen
+    2. sonst unter den allgemeinen "Straße / Sonstiges"-Stationen
+       (kategorie-spezifische Stationen wie das BVG-Zentralfundbüro sind
+       sonst fälschlich auch für ungeeignete Funde die "nächste" Station)
+    Ohne nutzbare Koordinaten greift die bisherige, rein kategoriebasierte
+    Auswahl als Fallback.
+    """
+    if origin and origin.get('lat') is not None and origin.get('lon') is not None:
+        with_coords = {"lat": {"$ne": None}, "lon": {"$ne": None}}
+        candidates = list(stations_collection.find({"serves_category": category, **with_coords}))
+        if not candidates:
+            candidates = list(stations_collection.find({"serves_category": GENERAL_STATION_CATEGORY, **with_coords}))
+
+        if candidates:
+            nearest = min(
+                candidates,
+                key=lambda s: haversine_distance_km(origin['lat'], origin['lon'], s['lat'], s['lon'])
+            )
+            return {
+                "name": nearest.get('name'),
+                "address": nearest.get('address'),
+                "district": nearest.get('district'),
+                "distance_km": round(
+                    haversine_distance_km(origin['lat'], origin['lon'], nearest['lat'], nearest['lon']), 1
+                )
+            }
+
+    # Fallback ohne nutzbare Koordinaten: bisherige rein kategoriebasierte Auswahl
     station = stations_collection.find_one({"serves_category": category})
     if not station:
         station = stations_collection.find_one({"name": "Zentrales Fundbüro Berlin"})
@@ -43,7 +78,7 @@ def find_recommended_station(category):
         return None
     return {
         "name": station.get('name'),
-        "adress": station.get('adress'),
+        "address": station.get('address'),
         "district": station.get('district')
     }
 
@@ -96,6 +131,14 @@ def create_item():
         corrected_location = raw_location
         data['corrected_location'] = raw_location
         data['location_details'] = None
+
+    # Ausgangspunkt für die Distanzberechnung zur Abgabestation: bevorzugt der
+    # aktuelle Standort (falls angegeben und geocodierbar), sonst der Fundort.
+    current_location_input = data.get('current_location')
+    if current_location_input:
+        distance_origin = geocode_berlin_address(current_location_input) or location_data
+    else:
+        distance_origin = location_data
 
     data['tracking_code'] = generate_tracking_code()
     data['match_found'] = False
@@ -178,7 +221,7 @@ def create_item():
     data['ai_summary'] = parsed_result.get('summary')
     data['recommended_station'] = None
     if item_type == 'found':
-        data['recommended_station'] = find_recommended_station(category)
+        data['recommended_station'] = find_recommended_station(category, origin=distance_origin)
 
     match_id = parsed_result.get('matched_item_id')
     if parsed_result.get('match_found') and match_id:

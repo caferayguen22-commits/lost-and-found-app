@@ -45,5 +45,6 @@ export const dom = {
     imageInput: document.getElementById('item-image'),
     themeToggleBtn: document.getElementById('theme-toggle'),
     themeIcon: document.getElementById('theme-icon'),
-    itemEmailInput: document.getElementById('item-email')
+    itemEmailInput: document.getElementById('item-email'),
+    itemCurrentLocationInput: document.getElementById('item-current-location')
 };
