@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from services.db import stations_collection
+from services.stations_repository import get_all_stations, get_stations_by_category, get_station_by_name
 
 stations_bp = Blueprint('stations', __name__)
 
@@ -8,10 +8,8 @@ stations_bp = Blueprint('stations', __name__)
 @stations_bp.route('/api/stations', methods=['GET'])
 def get_stations():
     try:
-        stations = list(stations_collection.find())
-        for station in stations:
-            station['_id'] = str(station['_id'])
-        return jsonify(stations), 200
+        stations = get_all_stations()
+        return jsonify([station.to_dict() for station in stations]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": f"Fehler beim Abrufen: {str(e)}"}), 500
 
@@ -23,20 +21,15 @@ def recommend_stations():
         if not category:
             return jsonify({"status": "error", "message": "Kategorie angeben (?category=...)."}), 400
 
-        station = stations_collection.find_one({"serves_category": category})
+        matches = get_stations_by_category(category)
+        if matches:
+            return jsonify({"status": "success", "recommended_station": matches[0].to_dict()}), 200
 
-        if station:
-            station['_id'] = str(station['_id'])
-            return jsonify({"status": "success", "recommended_station": station}), 200
-
-        backup_station = stations_collection.find_one({"name": "Zentrales Fundbüro Berlin"})
-        if backup_station:
-            backup_station['_id'] = str(backup_station['_id'])
-
+        backup_station = get_station_by_name("Zentrales Fundbüro Berlin")
         return jsonify({
             "status": "success",
             "message": "Keine spezifische Station für diese Kategorie gefunden.",
-            "recommended_station": backup_station
+            "recommended_station": backup_station.to_dict() if backup_station else None
         }), 200
     except Exception as e:
         return jsonify({"status": "error", "message": f"Fehler bei der Empfehlung: {str(e)}"}), 500

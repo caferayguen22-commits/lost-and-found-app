@@ -1,5 +1,6 @@
 .idea/
 .env
+*.db
 # KI & IDE Kontext-Dateien
 PROJECT_CONTEXT.md
 .ai/
@@ -7,4 +8,4 @@ __pycache__/
 *.pyc
 .venv/
 CLAUDE.md
-.claude/
+.claude/reset_items.py

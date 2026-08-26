@@ -1,8 +1,11 @@
 from flask import Flask
 
+from services.db import init_db
 from api.items_routes import items_bp
 from api.stations_routes import stations_bp
 from api.status_routes import status_bp
+
+init_db()
 
 app = Flask(__name__)
 

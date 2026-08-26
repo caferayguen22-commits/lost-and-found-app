@@ -1,17 +1,9 @@
-import os
 import time
-from pymongo import MongoClient
-from dotenv import load_dotenv
 
 from services.location_service import geocode_berlin_address
-
-load_dotenv()
-
-# MongoDB Verbindung aufbauen
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
-db = client['lost_and_found_db']
-stations_collection = db['berlin_stations']
+from services.stations_repository import insert_station, delete_all_stations
+from services.db import init_db
+from models.station import Station
 
 # Alle echten Berliner Hauptanlaufstellen & ALLE 37 Polizeiabschnitte
 berlin_stations = [
@@ -121,14 +113,17 @@ def geocode_stations():
 
 
 def seed_database():
+    init_db()
     geocode_stations()
 
-    # Kollektion leeren
-    stations_collection.delete_many({})
+    # Tabelle leeren
+    delete_all_stations()
 
-    # Alle 40 Stationen (37 Polizeidienststellen + 3 Fundbüros) einfügen
-    result = stations_collection.insert_many(berlin_stations)
-    print(f"✅ Erfolgreich {len(result.inserted_ids)} Anlaufstellen (alle 37 Berliner Polizeiabschnitte + 3 Fundbüros) in MongoDB eingetragen!")
+    # Alle Stationen einfügen
+    for station_dict in berlin_stations:
+        insert_station(Station(**station_dict))
+
+    print(f"✅ Erfolgreich {len(berlin_stations)} Anlaufstellen (alle 37 Berliner Polizeiabschnitte + 3 Fundbüros) in SQLite eingetragen!")
 
 if __name__ == "__main__":
     seed_database()
