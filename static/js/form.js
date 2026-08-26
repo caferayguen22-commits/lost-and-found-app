@@ -1,7 +1,6 @@
 import { dom } from './dom.js';
 import { state } from './state.js';
 import { setMode, updateCategoryUI } from './chip-ui.js';
-import { loadDashboardItems, filterGridByCategory } from './dashboard.js';
 
 export function initImageInput() {
     if (dom.imageInput) {
@@ -42,7 +41,6 @@ export function resetUI() {
     dom.resultContainer.classList.add('hidden');
     dom.itemForm.reset();
     state.base64Image = "";
-    loadDashboardItems();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -121,19 +119,15 @@ export async function handleFormSubmit(event) {
             dom.browseSuggestionContainer.classList.add('hidden');
             if (!data.match_found) {
                 const browseType = payload.type === 'lost' ? 'found' : 'lost';
-                const browseBtn = document.createElement('button');
-                browseBtn.type = 'button';
-                browseBtn.className = 'w-full py-3 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold rounded-xl transition-all';
-                browseBtn.innerText = `🔍 Gemeldete ${payload.category} durchsuchen`;
-                browseBtn.addEventListener('click', () => {
-                    filterGridByCategory(browseType, payload.category);
-                });
-                dom.browseSuggestionContainer.appendChild(browseBtn);
+                const browseLink = document.createElement('a');
+                browseLink.href = `/durchsuchen?type=${encodeURIComponent(browseType)}&category=${encodeURIComponent(payload.category)}`;
+                browseLink.className = 'block text-center w-full py-3 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 font-semibold rounded-xl transition-all';
+                browseLink.innerText = `🔍 Gemeldete ${payload.category} durchsuchen`;
+                dom.browseSuggestionContainer.appendChild(browseLink);
                 dom.browseSuggestionContainer.classList.remove('hidden');
             }
 
             dom.resultContainer.scrollIntoView({ behavior: 'smooth' });
-            loadDashboardItems();
         } else {
             alert("Fehler: " + (data.message || "Meldung konnte nicht angelegt werden."));
         }

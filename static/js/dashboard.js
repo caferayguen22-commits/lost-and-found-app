@@ -1,4 +1,4 @@
-import { dom } from './dom.js';
+import { dom } from './dom-search.js';
 
 let cachedLostItems = [];
 let cachedFoundItems = [];

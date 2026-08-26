@@ -4,13 +4,10 @@ export const dom = {
     btnFound: document.getElementById('btn-found'),
     btnBack: document.getElementById('btn-back'),
     btnReset: document.getElementById('btn-reset'),
-    btnRefresh: document.getElementById('btn-refresh'),
 
     formContainer: document.getElementById('form-container'),
     resultContainer: document.getElementById('result-container'),
     browseSuggestionContainer: document.getElementById('browse-suggestion-container'),
-    lostItemsGrid: document.getElementById('lost-items-grid'),
-    foundItemsGrid: document.getElementById('found-items-grid'),
     itemForm: document.getElementById('item-form'),
     submitBtn: document.getElementById('submit-btn'),
 

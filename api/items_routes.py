@@ -80,6 +80,11 @@ def home():
     return render_template('index.html')
 
 
+@items_bp.route('/durchsuchen')
+def durchsuchen():
+    return render_template('durchsuchen.html')
+
+
 @items_bp.route('/api/product-catalog', methods=['GET'])
 def get_product_catalog():
     return jsonify({
