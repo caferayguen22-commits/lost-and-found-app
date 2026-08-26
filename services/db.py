@@ -51,6 +51,14 @@ CREATE TABLE IF NOT EXISTS items (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     CHECK (type = 'found' OR secret_feature IS NULL)
 );
+
+CREATE TABLE IF NOT EXISTS claim_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    claimant_email TEXT,
+    success INTEGER NOT NULL,
+    attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

@@ -13,10 +13,16 @@ from services.stations_repository import get_stations_by_category, get_station_b
 from services.location_service import geocode_berlin_address, haversine_distance_km
 from services.prompt_service import build_found_prompt, build_lost_prompt
 from services.product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
-from services.email_service import send_match_notification
+from services.email_service import send_match_notification, send_claim_verified_notification
+from services.claim_service import compare_secret_feature
+from services.claim_attempts_repository import record_attempt, count_recent_attempts, has_verified_claim
 from models.item import Item
+from models.claim_attempt import ClaimAttempt
 
 items_bp = Blueprint('items', __name__)
+
+CLAIM_RATE_LIMIT_MAX_ATTEMPTS = 5
+CLAIM_RATE_LIMIT_WINDOW_MINUTES = 30
 
 
 def normalize_category(cat: str) -> str:
@@ -308,3 +314,53 @@ def update_item(item_id):
     if update_item_row(item_id, **data):
         return jsonify({"status": "success", "message": "Gegenstand erfolgreich aktualisiert!"}), 200
     return jsonify({"status": "error", "message": "Gegenstand wurde nicht gefunden."}), 404
+
+
+@items_bp.route('/api/items/<int:item_id>/verify', methods=['POST'])
+def verify_claim(item_id):
+    """
+    Verifiziert einen vermuteten Besitz-Anspruch auf einen Fund anhand des
+    geheimen Merkmals. Gibt NIEMALS den echten Wert von secret_feature zurück
+    -- weder bei Erfolg noch bei Misserfolg, nur ein einfaches match: true/false.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Keine Daten übergeben."}), 400
+
+    guess = (data.get('secret_feature_guess') or '').strip()
+    claimant_email = (data.get('claimant_email') or '').strip()
+    if not guess or not claimant_email:
+        return jsonify({"status": "error", "message": "Bitte Merkmal und E-Mail-Adresse angeben."}), 400
+
+    item = get_item_by_id(item_id)
+    if not item or item.type != 'found' or not item.secret_feature:
+        return jsonify({"status": "error", "message": "Für diesen Gegenstand ist keine Verifizierung möglich."}), 404
+
+    # Nach einem bereits erfolgreichen Match wird das Item als geklärt betrachtet.
+    if has_verified_claim(item_id):
+        return jsonify({
+            "status": "success",
+            "match": False,
+            "message": "Für diesen Fund wurde bereits ein Match bestätigt."
+        }), 200
+
+    # Rate-Limiting PRO ITEM (nicht pro E-Mail/IP -- die kann ein Angreifer beliebig wechseln,
+    # das Item nicht). Der Vergleich wird bei Überschreitung gar nicht erst durchgeführt.
+    if count_recent_attempts(item_id, CLAIM_RATE_LIMIT_WINDOW_MINUTES) >= CLAIM_RATE_LIMIT_MAX_ATTEMPTS:
+        return jsonify({
+            "status": "error",
+            "message": "Zu viele Versuche für diesen Fund. Bitte später erneut probieren."
+        }), 429
+
+    is_match = compare_secret_feature(guess, item.secret_feature)
+    record_attempt(ClaimAttempt(item_id=item_id, success=is_match, claimant_email=claimant_email))
+
+    if is_match and item.email:
+        send_claim_verified_notification(
+            to_email=item.email,
+            item_title=item.title,
+            tracking_code=item.tracking_code,
+            claimant_email=claimant_email
+        )
+
+    return jsonify({"status": "success", "match": is_match}), 200

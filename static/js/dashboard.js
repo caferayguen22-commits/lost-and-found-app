@@ -17,6 +17,9 @@ function createItemCard(item) {
     const card = document.createElement('div');
     card.className = 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 hover:border-gray-300 dark:hover:border-gray-700 transition-all flex flex-col justify-between';
     let imageMarkup = item.image ? `<img src="${item.image}" class="w-full h-32 object-cover rounded-xl mb-3 border border-gray-200 dark:border-gray-800">` : '';
+    const claimButtonMarkup = isFound
+        ? `<button type="button" class="claim-btn mt-3 w-full py-2 text-xs font-semibold rounded-lg bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/40 text-indigo-700 dark:text-indigo-300 transition-all" data-item-id="${item.id}">🕵️ Das könnte meins sein</button>`
+        : '';
 
     card.innerHTML = `
         <div>
@@ -31,6 +34,7 @@ function createItemCard(item) {
             </div>
             <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">${escapeHtml(item.title)}</h4>
             <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">${escapeHtml(item.description)}</p>
+            ${claimButtonMarkup}
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-600 border-t border-gray-200 dark:border-gray-800 pt-3 flex justify-between items-center">
             <span class="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">${shortId}</span>

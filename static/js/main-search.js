@@ -1,9 +1,11 @@
 import { dom } from './dom-search.js';
 import { initTheme } from './theme.js';
 import { loadDashboardItems, filterGridByCategory } from './dashboard.js';
+import { initClaimFlow } from './claim.js';
 
 async function init() {
     initTheme();
+    initClaimFlow();
 
     if (dom.btnRefresh) dom.btnRefresh.addEventListener('click', loadDashboardItems);
 
