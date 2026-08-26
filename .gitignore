@@ -8,4 +8,5 @@ __pycache__/
 *.pyc
 .venv/
 CLAUDE.md
-.claude/reset_items.py
+.claude/
+reset_items.py
