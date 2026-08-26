@@ -226,7 +226,10 @@ def create_item():
         image=data.get('image'),
         ai_summary=parsed_result.get('summary'),
         recommended_station_id=recommended_station.id if recommended_station else None,
-        recommended_station_distance_km=distance_km
+        recommended_station_distance_km=distance_km,
+        # Nur bei Fundmeldungen relevant -- entspricht der CHECK-Constraint in services/db.py.
+        # Fließt bewusst NIRGENDS in other_items_list oder die KI-Prompts ein.
+        secret_feature=(data.get('secret_feature') or None) if item_type == 'found' else None
     )
 
     matched_item = None

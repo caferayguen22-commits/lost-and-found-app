@@ -43,5 +43,7 @@ export const dom = {
     themeToggleBtn: document.getElementById('theme-toggle'),
     themeIcon: document.getElementById('theme-icon'),
     itemEmailInput: document.getElementById('item-email'),
-    itemCurrentLocationInput: document.getElementById('item-current-location')
+    itemCurrentLocationInput: document.getElementById('item-current-location'),
+    secretFeatureContainer: document.getElementById('secret-feature-container'),
+    itemSecretFeatureInput: document.getElementById('item-secret-feature')
 };

@@ -27,6 +27,7 @@ class Item:
     ai_summary: str | None = None
     recommended_station_id: int | None = None
     recommended_station_distance_km: float | None = None
+    secret_feature: str | None = None
     id: int | None = None
     created_at: str | None = None
 
@@ -37,4 +38,11 @@ class Item:
         return cls(**data)
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        """Öffentliche Repräsentation für API-Antworten. secret_feature dient
+        ausschließlich der späteren serverseitigen Verifizierung und darf
+        niemals über eine API-Antwort nach außen gehen -- deshalb hier
+        zentral ausgeschlossen, statt sich auf jede aufrufende Route zu
+        verlassen."""
+        data = asdict(self)
+        data.pop("secret_feature", None)
+        return data

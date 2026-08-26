@@ -16,15 +16,17 @@ def insert_item(item: Item) -> Item:
                 location_lat, location_lon, location_postcode, location_district,
                 location_road, location_house_number, current_location, email, image,
                 tracking_code, match_found, matched_item_id, match_probability,
-                ai_summary, user_hint, recommended_station_id, recommended_station_distance_km
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ai_summary, user_hint, recommended_station_id, recommended_station_distance_km,
+                secret_feature
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item.type, item.category, item.title, item.description, item.location, item.corrected_location,
                 item.location_lat, item.location_lon, item.location_postcode, item.location_district,
                 item.location_road, item.location_house_number, item.current_location, item.email, item.image,
                 item.tracking_code, int(item.match_found), item.matched_item_id, item.match_probability,
-                item.ai_summary, item.user_hint, item.recommended_station_id, item.recommended_station_distance_km
+                item.ai_summary, item.user_hint, item.recommended_station_id, item.recommended_station_distance_km,
+                item.secret_feature
             )
         )
         connection.commit()

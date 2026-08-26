@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS items (
     user_hint TEXT NOT NULL,
     recommended_station_id INTEGER REFERENCES stations(id) ON DELETE SET NULL,
     recommended_station_distance_km REAL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    secret_feature TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    CHECK (type = 'found' OR secret_feature IS NULL)
 );
 """
 

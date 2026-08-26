@@ -29,9 +29,11 @@ export function openForm(type) {
     if (type === 'found') {
         dom.formTitle.innerText = "Fundgegenstand erfassen";
         dom.hintBox.innerText = "Danke für deine Ehrlichkeit! Präzise Details erhöhen die Chance extrem, den Eigentümer sofort zu finden.";
+        dom.secretFeatureContainer.classList.remove('hidden');
     } else {
         dom.formTitle.innerText = "Verlustmeldung aufgeben";
         dom.hintBox.innerText = "Beschreibe deinen Gegenstand so genau wie möglich. Unsere KI durchsucht sofort alle Meldungen.";
+        dom.secretFeatureContainer.classList.add('hidden');
     }
     dom.formContainer.scrollIntoView({ behavior: 'smooth' });
 }
@@ -88,6 +90,16 @@ export async function handleFormSubmit(event) {
     const currentLocation = dom.itemCurrentLocationInput.value.trim();
     if (currentLocation) {
         payload.current_location = currentLocation;
+    }
+
+    // Geheimes Merkmal ist ausschließlich bei Fundmeldungen sinnvoll -- auch
+    // wenn das Feld aus irgendeinem Grund sichtbar wäre, wird es bei einer
+    // Verlustmeldung nie ins Payload aufgenommen.
+    if (payload.type === 'found') {
+        const secretFeature = dom.itemSecretFeatureInput.value.trim();
+        if (secretFeature) {
+            payload.secret_feature = secretFeature;
+        }
     }
 
     try {
