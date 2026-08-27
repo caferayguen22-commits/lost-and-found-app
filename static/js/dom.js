@@ -45,5 +45,11 @@ export const dom = {
     itemEmailInput: document.getElementById('item-email'),
     itemCurrentLocationInput: document.getElementById('item-current-location'),
     secretFeatureContainer: document.getElementById('secret-feature-container'),
-    itemSecretFeatureInput: document.getElementById('item-secret-feature')
+    itemSecretFeatureInput: document.getElementById('item-secret-feature'),
+
+    descriptionSuggestionContainer: document.getElementById('description-suggestion-container'),
+    descriptionSuggestionText: document.getElementById('description-suggestion-text'),
+    btnAcceptSuggestion: document.getElementById('btn-accept-suggestion'),
+    btnRejectSuggestion: document.getElementById('btn-reject-suggestion'),
+    descriptionSuggestionConfirmation: document.getElementById('description-suggestion-confirmation')
 };

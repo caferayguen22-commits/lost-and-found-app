@@ -167,6 +167,17 @@
         <section id="result-container" class="hidden mt-8 bg-white dark:bg-gray-900 border border-indigo-300 dark:border-indigo-500/30 rounded-3xl p-8 shadow-2xl transition-all duration-500">
             <h3 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">KI-Analyse & Status</h3>
             <div id="result-content" class="text-gray-700 dark:text-gray-300 space-y-4 whitespace-pre-line text-sm leading-relaxed"></div>
+
+            <div id="description-suggestion-container" class="hidden mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
+                <p class="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2">✏️ Verbesserungsvorschlag für deine Beschreibung:</p>
+                <p id="description-suggestion-text" class="text-sm text-gray-700 dark:text-gray-300 italic mb-4"></p>
+                <div class="flex gap-2">
+                    <button type="button" id="btn-accept-suggestion" class="flex-1 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all">Übernehmen</button>
+                    <button type="button" id="btn-reject-suggestion" class="flex-1 py-2 text-sm font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl transition-all">Behalten wie ist</button>
+                </div>
+                <p id="description-suggestion-confirmation" class="hidden text-sm text-emerald-600 dark:text-emerald-400 font-semibold mt-2"></p>
+            </div>
+
             <div id="browse-suggestion-container" class="hidden mt-4"></div>
             <button id="btn-reset" class="mt-6 w-full py-3 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-xl transition-colors">Neue Suche starten</button>
         </section>

@@ -208,6 +208,15 @@ def create_item():
     except Exception as e:
         parsed_result["summary"] = f"KI-Bericht konnte nicht generiert werden: {str(e)}"
 
+    # Nicht-destruktiver Rechtschreib-/Grammatik-Vorschlag: nur relevant, wenn er
+    # sich tatsächlich vom Original unterscheidet -- verhindert eine Vorschlags-
+    # box mit identischem Text, falls die KI die "null bei keiner Korrektur"-
+    # Anweisung mal ignoriert. Betrifft NUR description, nie title oder
+    # secret_feature (secret_feature geht ohnehin nie in den Prompt ein).
+    corrected_description = parsed_result.get('corrected_description')
+    if not corrected_description or corrected_description == description:
+        corrected_description = None
+
     recommended_station, distance_km = (None, None)
     if item_type == 'found':
         recommended_station, distance_km = find_recommended_station(category, origin=distance_origin)
@@ -289,6 +298,7 @@ def create_item():
         "match_found": new_item.match_found,
         "match_probability": new_item.match_probability,
         "recommended_station": recommended_station_payload,
+        "corrected_description": corrected_description,
         "hint": new_item.user_hint
     }), 201
 

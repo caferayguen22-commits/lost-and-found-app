@@ -43,7 +43,49 @@ export function resetUI() {
     dom.resultContainer.classList.add('hidden');
     dom.itemForm.reset();
     state.base64Image = "";
+    dom.descriptionSuggestionContainer.classList.add('hidden');
+    dom.descriptionSuggestionConfirmation.classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showDescriptionSuggestion(itemId, correctedDescription) {
+    dom.descriptionSuggestionText.innerText = correctedDescription;
+    dom.descriptionSuggestionConfirmation.classList.add('hidden');
+    dom.descriptionSuggestionContainer.classList.remove('hidden');
+
+    // .onclick statt addEventListener -- überschreibt bei jeder neuen Meldung
+    // sauber den vorherigen Handler, statt sich über mehrere Submits hinweg
+    // aufzustapeln (das Formular bleibt ja über mehrere Meldungen im DOM).
+    dom.btnAcceptSuggestion.onclick = async () => {
+        dom.btnAcceptSuggestion.disabled = true;
+        dom.btnRejectSuggestion.disabled = true;
+        try {
+            const response = await fetch(`/api/items/${itemId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: correctedDescription })
+            });
+            if (response.ok) {
+                dom.descriptionSuggestionConfirmation.innerText = "✅ Übernommen -- deine Beschreibung wurde aktualisiert.";
+                dom.descriptionSuggestionConfirmation.classList.remove('hidden');
+                dom.btnAcceptSuggestion.classList.add('hidden');
+                dom.btnRejectSuggestion.classList.add('hidden');
+            } else {
+                alert("Die Korrektur konnte nicht übernommen werden.");
+                dom.btnAcceptSuggestion.disabled = false;
+                dom.btnRejectSuggestion.disabled = false;
+            }
+        } catch (error) {
+            alert("Verbindungsfehler zum Server.");
+            console.error(error);
+            dom.btnAcceptSuggestion.disabled = false;
+            dom.btnRejectSuggestion.disabled = false;
+        }
+    };
+
+    dom.btnRejectSuggestion.onclick = () => {
+        dom.descriptionSuggestionContainer.classList.add('hidden');
+    };
 }
 
 export async function handleFormSubmit(event) {
@@ -125,6 +167,12 @@ export async function handleFormSubmit(event) {
             }
 
             dom.resultContent.innerText = resultText;
+
+            // Rechtschreib-/Grammatik-Vorschlag: nur wenn tatsächlich einer da ist.
+            dom.descriptionSuggestionContainer.classList.add('hidden');
+            if (data.corrected_description) {
+                showDescriptionSuggestion(data.id, data.corrected_description);
+            }
 
             // Bei erfolglosem Match gezielt die Gegenliste anbieten
             dom.browseSuggestionContainer.innerHTML = '';
