@@ -10,6 +10,13 @@ load_dotenv()
 SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", "lost_and_found.db")
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS stations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -57,6 +64,25 @@ CREATE TABLE IF NOT EXISTS claim_attempts (
     item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     claimant_email TEXT,
     success INTEGER NOT NULL,
+    attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS garage_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    identifying_marks TEXT,
+    image TEXT,
+    status TEXT NOT NULL DEFAULT 'safe' CHECK (status IN ('safe', 'lost', 'stolen')),
+    status_changed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS garage_check_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT NOT NULL,
     attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """

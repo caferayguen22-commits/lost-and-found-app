@@ -3,12 +3,14 @@ import { initTheme } from './theme.js';
 import { loadProductCatalog } from './catalog-api.js';
 import { setMode, updateCategoryUI } from './chip-ui.js';
 import { openForm, resetUI, handleFormSubmit, initImageInput } from './form.js';
+import { renderAuthStatus } from './auth-status.js';
 
 async function init() {
     await loadProductCatalog();
 
     initTheme();
     initImageInput();
+    renderAuthStatus('auth-status');
 
     dom.btnLost.addEventListener('click', () => openForm('lost'));
     dom.btnFound.addEventListener('click', () => openForm('found'));

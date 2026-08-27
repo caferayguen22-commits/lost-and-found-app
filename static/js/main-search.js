@@ -2,10 +2,12 @@ import { dom } from './dom-search.js';
 import { initTheme } from './theme.js';
 import { loadDashboardItems, filterGridByCategory } from './dashboard.js';
 import { initClaimFlow } from './claim.js';
+import { renderAuthStatus } from './auth-status.js';
 
 async function init() {
     initTheme();
     initClaimFlow();
+    renderAuthStatus('auth-status');
 
     if (dom.btnRefresh) dom.btnRefresh.addEventListener('click', loadDashboardItems);
 

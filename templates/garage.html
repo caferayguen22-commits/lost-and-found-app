@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine Garage – Lost & Found Berlin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col justify-center items-center font-sans antialiased selection:bg-indigo-500 selection:text-white py-12 transition-colors duration-300">
+
+    <main class="w-full max-w-2xl px-6">
+        <header class="text-center mb-10 relative">
+            <button id="theme-toggle" type="button"
+                class="absolute right-0 top-0 w-11 h-11 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-indigo-500/50 transition-all"
+                aria-label="Hell-/Dunkelmodus umschalten">
+                <span id="theme-icon">🌙</span>
+            </button>
+            <a href="/" class="absolute left-0 top-0 h-11 flex items-center text-sm font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors">&larr; Zurück</a>
+            <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 sm:text-4xl">
+                Meine Garage
+            </h1>
+            <p class="mt-3 text-gray-500 dark:text-gray-400 text-lg">Wertsachen vorab registrieren, im Ernstfall Status setzen.</p>
+        </header>
+
+        <div id="auth-status" class="text-center mb-8 text-sm text-gray-500 dark:text-gray-400"></div>
+
+        <div class="text-center mb-8">
+            <a href="/garage/check" class="text-sm font-semibold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors">🔍 So sehen Käufer die Prüf-Funktion</a>
+        </div>
+
+        <section class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 shadow-2xl mb-10">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Neuen Gegenstand registrieren</h2>
+            <form id="garage-form" class="space-y-5" autocomplete="off">
+                <div>
+                    <label for="garage-category" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Kategorie</label>
+                    <input type="text" id="garage-category" required placeholder="z.B. Fahrrad, Laptop, Schmuck..." class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label for="garage-title" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Bezeichnung</label>
+                    <input type="text" id="garage-title" required placeholder="z.B. Rennrad Bianchi" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label for="garage-description" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Beschreibung</label>
+                    <textarea id="garage-description" rows="3" required placeholder="Farbe, Zustand, Besonderheiten..." class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"></textarea>
+                </div>
+                <div>
+                    <label for="garage-marks" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Seriennummer / Rahmennummer (optional, aber wichtig für die Käufer-Prüfung)</label>
+                    <input type="text" id="garage-marks" placeholder="z.B. FR-12345-XY" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label for="garage-image" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Foto (Optional)</label>
+                    <input type="file" id="garage-image" accept="image/*" class="w-full px-4 py-2 text-xs bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-200 dark:hover:file:bg-indigo-900 cursor-pointer">
+                </div>
+                <button type="submit" id="garage-submit-btn" class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg transition-all">
+                    Registrieren
+                </button>
+            </form>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Meine registrierten Gegenstände</h2>
+            <div id="garage-items-list" class="space-y-4"></div>
+        </section>
+
+    </main>
+    <script type="module" src="{{ url_for('static', filename='js/garage.js') }}"></script>
+</body>
+</html>
