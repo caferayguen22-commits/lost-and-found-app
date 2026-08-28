@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 
 from flask import Blueprint, jsonify, request, render_template
@@ -12,6 +13,7 @@ from services.items_repository import (
 from services.stations_repository import get_stations_by_category, get_station_by_name
 from services.location_service import geocode_berlin_address, haversine_distance_km
 from services.prompt_service import build_found_prompt, build_lost_prompt
+from services.prompt_safety_service import contains_suspicious_pattern
 from services.product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
 from services.email_service import send_match_notification, send_claim_verified_notification
 from services.claim_service import compare_secret_feature
@@ -20,6 +22,7 @@ from models.item import Item
 from models.claim_attempt import ClaimAttempt
 
 items_bp = Blueprint('items', __name__)
+logger = logging.getLogger(__name__)
 
 CLAIM_RATE_LIMIT_MAX_ATTEMPTS = 5
 CLAIM_RATE_LIMIT_WINDOW_MINUTES = 30
@@ -116,6 +119,16 @@ def create_item():
 
     title = data.get('title', 'Unbekannter Gegenstand')
     description = data.get('description', 'Keine Beschreibung vorhanden')
+
+    # Reines Monitoring-Signal (siehe services/prompt_safety_service.py) --
+    # blockiert die Meldung NICHT, die eigentliche Absicherung ist die
+    # <nutzereingabe>-Struktur in services/prompt_service.py.
+    if contains_suspicious_pattern(title) or contains_suspicious_pattern(description):
+        logger.warning(
+            "Verdächtiges Muster (mögl. Prompt-Injection-Versuch) in Meldung erkannt: "
+            "type=%s title=%r description=%r", item_type, title, description
+        )
+
     raw_location = data.get('location', 'Kein spezifischer Ort angegeben')
     current_location_input = data.get('current_location')
     current_location = current_location_input or raw_location
@@ -250,10 +263,26 @@ def create_item():
     matched_item = None
     match_id_raw = parsed_result.get('matched_item_id')
     if parsed_result.get('match_found') and match_id_raw is not None:
+        # Output-Validierung (Schicht 3 der Prompt-Injection-Absicherung, siehe
+        # lernnotizen.md): eine matched_item_id wird NUR akzeptiert, wenn sie
+        # tatsächlich eine der Kandidaten-IDs war, die wir der KI angeboten
+        # haben -- unabhängig davon, was die KI-Antwort behauptet. Schützt die
+        # eigentliche Konsequenz (automatische Verknüpfung zweier Meldungen),
+        # selbst falls die Prompt-Absicherung irgendwann doch umgangen würde.
+        candidate_ids = {entry["id"] for entry in other_items_list}
         try:
-            matched_item = get_item_by_id(int(match_id_raw))
+            match_id = int(match_id_raw)
         except (TypeError, ValueError):
-            matched_item = None
+            match_id = None
+
+        if match_id is not None and match_id in candidate_ids:
+            matched_item = get_item_by_id(match_id)
+        elif match_id is not None:
+            logger.warning(
+                "KI hat matched_item_id=%s zurückgegeben, das NICHT unter den "
+                "angebotenen Kandidaten %s war -- Match verworfen.",
+                match_id, sorted(candidate_ids)
+            )
 
         if matched_item:
             item.match_found = True
