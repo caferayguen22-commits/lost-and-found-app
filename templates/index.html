@@ -149,6 +149,9 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Beschreibung & Details</label>
                     <textarea id="item-description" rows="3" required placeholder="Zustand, Besonderheiten..." class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"></textarea>
+                    <p id="description-secret-hint" class="hidden mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        💡 Tipp: Für die Beschreibung reichen Kategorie, Marke, Modell, Farbe und der allgemeine Zustand -- das reicht fürs Matching völlig aus. Sehr einzigartige Details (ein bestimmter Kratzer, eine Gravur, ein Aufkleber an einer bestimmten Stelle) gehören NICHT hierher, sondern weiter unten ins geheime Merkmal.
+                    </p>
                 </div>
 
                 <div>
@@ -165,7 +168,29 @@
                     <label for="item-secret-feature" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                         🕵️ Werde zum Detektiv: Verrate uns EIN geheimes Merkmal, das nur der echte Eigentümer kennt (ein Kratzer, ein Aufkleber, irgendwas Besonderes). Das bleibt unsichtbar für alle anderen -- aber genau damit erkennt später jemand den wahren Besitzer zweifelsfrei.
                     </label>
+                    <p class="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                        ⚠️ Wichtig: Das Merkmal muss etwas sein, das NICHT auf deinem Foto zu sehen ist und NICHT in deiner Beschreibung oben steht -- sonst könnte es jeder erraten, der den Fund online sieht, und die Verifizierung wäre wertlos.
+                    </p>
                     <input type="text" id="item-secret-feature" placeholder="z.B. ein kleiner Kratzer unten links, ein Aufkleber auf der Rückseite..." class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                    <div class="mt-2 flex items-start gap-2">
+                        <input type="checkbox" id="item-secret-feature-confirm" class="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0">
+                        <label for="item-secret-feature-confirm" class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
+                            Ich bestätige, dass dieses Merkmal auf dem Foto nicht sichtbar ist und in der Beschreibung nicht erwähnt wird.
+                        </label>
+                    </div>
+                    <div id="secret-feature-overlap-warning" class="hidden mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 text-xs leading-relaxed">
+                        ⚠️ Dieses Merkmal (oder etwas sehr Ähnliches) scheint auch in deiner Beschreibung vorzukommen -- prüfe, ob es dort wirklich nicht mehr steht. Das Absenden ist trotzdem möglich, das ist nur ein Hinweis.
+                    </div>
+                </div>
+
+                <div id="valuable-item-container" class="hidden">
+                    <label for="item-estimated-value" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Geschätzter Wert (optional, in €) -- nur für einen Tipp unten, wird nicht gespeichert
+                    </label>
+                    <input type="number" id="item-estimated-value" min="0" step="1" placeholder="z.B. 800" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                    <div id="valuable-item-hint" class="hidden mt-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 text-xs leading-relaxed">
+                        👮 Bei hochwertigen Fundstücken ist es oft die sicherste Option, sie zusätzlich beim nächstgelegenen Fundbüro der Polizei abzugeben, statt dich allein auf diese App zu verlassen.
+                    </div>
                 </div>
 
                 <div>
@@ -176,6 +201,26 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Foto (Optional)</label>
                     <input type="file" id="item-image" accept="image/*" class="w-full px-4 py-2 text-xs bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-200 dark:hover:file:bg-indigo-900 cursor-pointer">
+                    <button type="button" id="photo-analyze-btn" class="mt-2 w-full py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 text-gray-700 dark:text-gray-300 rounded-xl transition-all">
+                        📷 Foto analysieren
+                    </button>
+
+                    <div id="photo-guidance-box" class="hidden mt-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40">
+                        <p class="text-sm text-amber-700 dark:text-amber-300"><span id="photo-guidance-text"></span></p>
+                    </div>
+
+                    <div id="photo-suggestion-box" class="hidden mt-3 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
+                        <p class="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2">🔎 Vorschlag aus der Foto-Analyse:</p>
+                        <p id="photo-suggestion-details" class="text-xs text-gray-600 dark:text-gray-400 mb-2"></p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Titel-Vorschlag:</p>
+                        <p id="photo-suggestion-title" class="text-sm text-gray-700 dark:text-gray-300 italic mb-2"></p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Beschreibungs-Vorschlag:</p>
+                        <p id="photo-suggestion-description" class="text-sm text-gray-700 dark:text-gray-300 italic mb-4"></p>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-accept-photo-suggestion" class="flex-1 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all">Übernehmen</button>
+                            <button type="button" id="btn-reject-photo-suggestion" class="flex-1 py-2 text-sm font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl transition-all">Verwerfen</button>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit" id="submit-btn" class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg transition-all transform active:scale-98">

@@ -1,6 +1,7 @@
 import { dom } from './dom.js';
 import { state } from './state.js';
 import { setMode, updateCategoryUI } from './chip-ui.js';
+import { initPhotoAnalysis } from './photo-analysis.js';
 
 export function initImageInput() {
     if (dom.imageInput) {
@@ -15,12 +16,88 @@ export function initImageInput() {
     }
 }
 
+// Kategorien, die praktisch immer als "hochwertig" gelten -- Smartphone/
+// Laptop/Tablet wegen des Sachwerts, Geldbörse wegen möglichem Bargeld/
+// Ausweisdokumenten (genau die Fälle, bei denen auch das echte Fundrecht/
+// Fundbüro eine Abgabe bei der Polizei empfiehlt). Zusätzlich lässt sich
+// ein optionaler geschätzter Wert eintragen -- rein clientseitig, wird NICHT
+// an den Server geschickt, dient nur als zweiter Trigger für den Hinweis.
+const VALUE_ALERT_CATEGORIES = ['Smartphone', 'Laptop/Tablet', 'Geldbörse'];
+const VALUE_ALERT_THRESHOLD_EUR = 150;
+
+export function updateValuableItemHint() {
+    if (dom.itemTypeInput.value !== 'found') {
+        dom.valuableItemHint.classList.add('hidden');
+        return;
+    }
+    const category = document.querySelector('input[name="category"]:checked')?.value;
+    const value = parseFloat(dom.itemEstimatedValueInput.value);
+    const isValuable = VALUE_ALERT_CATEGORIES.includes(category) || (!isNaN(value) && value >= VALUE_ALERT_THRESHOLD_EUR);
+    dom.valuableItemHint.classList.toggle('hidden', !isValuable);
+}
+
+// Debounce, damit nicht bei jedem einzelnen Tastenanschlag ein Request
+// rausgeht -- die Prüfung selbst ist zwar billig (rein lokal, kein KI-
+// Aufruf), aber ein Request pro Zeichen wäre trotzdem unnötig.
+let overlapCheckTimer = null;
+
+export function checkSecretFeatureOverlap() {
+    if (dom.itemTypeInput.value !== 'found') {
+        dom.secretFeatureOverlapWarning.classList.add('hidden');
+        return;
+    }
+    clearTimeout(overlapCheckTimer);
+    overlapCheckTimer = setTimeout(async () => {
+        const secretFeature = dom.itemSecretFeatureInput.value.trim();
+        const description = dom.itemDescription.value.trim();
+        if (!secretFeature || !description) {
+            dom.secretFeatureOverlapWarning.classList.add('hidden');
+            return;
+        }
+        try {
+            const response = await fetch('/api/check-secret-feature-overlap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret_feature: secretFeature, description })
+            });
+            const data = await response.json();
+            dom.secretFeatureOverlapWarning.classList.toggle('hidden', !(response.ok && data.overlap));
+        } catch (error) {
+            // Reiner Hinweis, kein kritischer Pfad -- bei Verbindungsfehler
+            // einfach nichts anzeigen, statt den Nutzer zu stören.
+            console.error(error);
+        }
+    }, 500);
+}
+
+export function initPhotoAnalysisForItemForm() {
+    initPhotoAnalysis({
+        analyzeBtn: dom.photoAnalyzeBtn,
+        guidanceBox: dom.photoGuidanceBox,
+        guidanceText: dom.photoGuidanceText,
+        suggestionBox: dom.photoSuggestionBox,
+        suggestionDetailsText: dom.photoSuggestionDetails,
+        suggestionTitleText: dom.photoSuggestionTitle,
+        suggestionDescriptionText: dom.photoSuggestionDescription,
+        acceptBtn: dom.btnAcceptPhotoSuggestion,
+        rejectBtn: dom.btnRejectPhotoSuggestion,
+        getBase64Image: () => state.base64Image,
+        getCategory: () => document.querySelector('input[name="category"]:checked')?.value,
+        onAccept: (result) => {
+            if (result.suggested_title) dom.itemTitleInput.value = result.suggested_title;
+            if (result.suggested_description) dom.itemDescription.value = result.suggested_description;
+        }
+    });
+}
+
 export function openForm(type) {
     dom.itemForm.reset();
     state.base64Image = "";
     dom.itemTypeInput.value = type;
     dom.formContainer.classList.remove('hidden');
     dom.resultContainer.classList.add('hidden');
+    dom.photoGuidanceBox.classList.add('hidden');
+    dom.photoSuggestionBox.classList.add('hidden');
 
     const defaultCategory = document.querySelector('input[name="category"]:checked')?.value || 'Smartphone';
     setMode('expert');
@@ -30,11 +107,17 @@ export function openForm(type) {
         dom.formTitle.innerText = "Fundgegenstand erfassen";
         dom.hintBox.innerText = "Danke für deine Ehrlichkeit! Präzise Details erhöhen die Chance extrem, den Eigentümer sofort zu finden.";
         dom.secretFeatureContainer.classList.remove('hidden');
+        dom.valuableItemContainer.classList.remove('hidden');
+        dom.descriptionSecretHint.classList.remove('hidden');
     } else {
         dom.formTitle.innerText = "Verlustmeldung aufgeben";
         dom.hintBox.innerText = "Beschreibe deinen Gegenstand so genau wie möglich. Unsere KI durchsucht sofort alle Meldungen.";
         dom.secretFeatureContainer.classList.add('hidden');
+        dom.valuableItemContainer.classList.add('hidden');
+        dom.descriptionSecretHint.classList.add('hidden');
     }
+    updateValuableItemHint();
+    dom.secretFeatureOverlapWarning.classList.add('hidden');
     dom.formContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -45,6 +128,10 @@ export function resetUI() {
     state.base64Image = "";
     dom.descriptionSuggestionContainer.classList.add('hidden');
     dom.descriptionSuggestionConfirmation.classList.add('hidden');
+    dom.photoGuidanceBox.classList.add('hidden');
+    dom.photoSuggestionBox.classList.add('hidden');
+    dom.valuableItemHint.classList.add('hidden');
+    dom.secretFeatureOverlapWarning.classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -140,6 +227,13 @@ export async function handleFormSubmit(event) {
     if (payload.type === 'found') {
         const secretFeature = dom.itemSecretFeatureInput.value.trim();
         if (secretFeature) {
+            if (!dom.itemSecretFeatureConfirm.checked) {
+                alert('Bitte bestätige zuerst per Checkbox, dass das geheime Merkmal auf dem Foto nicht sichtbar ist und in der Beschreibung nicht erwähnt wird.');
+                dom.submitBtn.disabled = false;
+                dom.submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                dom.submitBtn.innerText = "Meldung absenden & KI-Matching starten";
+                return;
+            }
             payload.secret_feature = secretFeature;
         }
     }
@@ -163,7 +257,12 @@ export async function handleFormSubmit(event) {
                 resultText += `\n\n🎉 Möglicher Match gefunden! (${data.match_probability}% Wahrscheinlichkeit)`;
             }
             if (data.recommended_station) {
-                resultText += `\n\nEmpfohlene Abgabestation: ${data.recommended_station}`;
+                const station = data.recommended_station;
+                let stationText = `${station.name} (${station.address}, ${station.district})`;
+                if (station.distance_km !== null && station.distance_km !== undefined) {
+                    stationText += ` -- ca. ${station.distance_km} km entfernt`;
+                }
+                resultText += `\n\nEmpfohlene Abgabestation: ${stationText}`;
             }
 
             dom.resultContent.innerText = resultText;

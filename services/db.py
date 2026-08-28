@@ -85,6 +85,12 @@ CREATE TABLE IF NOT EXISTS garage_check_attempts (
     ip_address TEXT NOT NULL,
     attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS photo_analysis_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT NOT NULL,
+    attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

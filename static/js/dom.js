@@ -46,10 +46,27 @@ export const dom = {
     itemCurrentLocationInput: document.getElementById('item-current-location'),
     secretFeatureContainer: document.getElementById('secret-feature-container'),
     itemSecretFeatureInput: document.getElementById('item-secret-feature'),
+    itemSecretFeatureConfirm: document.getElementById('item-secret-feature-confirm'),
+    secretFeatureOverlapWarning: document.getElementById('secret-feature-overlap-warning'),
+    descriptionSecretHint: document.getElementById('description-secret-hint'),
+
+    valuableItemContainer: document.getElementById('valuable-item-container'),
+    itemEstimatedValueInput: document.getElementById('item-estimated-value'),
+    valuableItemHint: document.getElementById('valuable-item-hint'),
 
     descriptionSuggestionContainer: document.getElementById('description-suggestion-container'),
     descriptionSuggestionText: document.getElementById('description-suggestion-text'),
     btnAcceptSuggestion: document.getElementById('btn-accept-suggestion'),
     btnRejectSuggestion: document.getElementById('btn-reject-suggestion'),
-    descriptionSuggestionConfirmation: document.getElementById('description-suggestion-confirmation')
+    descriptionSuggestionConfirmation: document.getElementById('description-suggestion-confirmation'),
+
+    photoAnalyzeBtn: document.getElementById('photo-analyze-btn'),
+    photoGuidanceBox: document.getElementById('photo-guidance-box'),
+    photoGuidanceText: document.getElementById('photo-guidance-text'),
+    photoSuggestionBox: document.getElementById('photo-suggestion-box'),
+    photoSuggestionDetails: document.getElementById('photo-suggestion-details'),
+    photoSuggestionTitle: document.getElementById('photo-suggestion-title'),
+    photoSuggestionDescription: document.getElementById('photo-suggestion-description'),
+    btnAcceptPhotoSuggestion: document.getElementById('btn-accept-photo-suggestion'),
+    btnRejectPhotoSuggestion: document.getElementById('btn-reject-photo-suggestion')
 };

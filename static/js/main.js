@@ -2,7 +2,7 @@ import { dom } from './dom.js';
 import { initTheme } from './theme.js';
 import { loadProductCatalog } from './catalog-api.js';
 import { setMode, updateCategoryUI } from './chip-ui.js';
-import { openForm, resetUI, handleFormSubmit, initImageInput } from './form.js';
+import { openForm, resetUI, handleFormSubmit, initImageInput, initPhotoAnalysisForItemForm, updateValuableItemHint, checkSecretFeatureOverlap } from './form.js';
 import { renderAuthStatus } from './auth-status.js';
 
 async function init() {
@@ -10,6 +10,7 @@ async function init() {
 
     initTheme();
     initImageInput();
+    initPhotoAnalysisForItemForm();
     renderAuthStatus('auth-status');
 
     dom.btnLost.addEventListener('click', () => openForm('lost'));
@@ -24,8 +25,14 @@ async function init() {
     dom.categoryInputs.forEach(input => {
         input.addEventListener('change', (e) => {
             updateCategoryUI(e.target.value);
+            updateValuableItemHint();
         });
     });
+
+    dom.itemEstimatedValueInput.addEventListener('input', updateValuableItemHint);
+
+    dom.itemDescription.addEventListener('input', checkSecretFeatureOverlap);
+    dom.itemSecretFeatureInput.addEventListener('input', checkSecretFeatureOverlap);
 }
 
 document.addEventListener('DOMContentLoaded', init);

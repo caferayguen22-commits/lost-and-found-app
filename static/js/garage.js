@@ -1,7 +1,33 @@
 import { initTheme } from './theme.js';
 import { renderAuthStatus } from './auth-status.js';
+import { initPhotoAnalysis } from './photo-analysis.js';
 
 let base64Image = "";
+
+function resetPhotoAnalysisBoxes() {
+    document.getElementById('photo-guidance-box').classList.add('hidden');
+    document.getElementById('photo-suggestion-box').classList.add('hidden');
+}
+
+function initPhotoAnalysisForGarageForm() {
+    initPhotoAnalysis({
+        analyzeBtn: document.getElementById('photo-analyze-btn'),
+        guidanceBox: document.getElementById('photo-guidance-box'),
+        guidanceText: document.getElementById('photo-guidance-text'),
+        suggestionBox: document.getElementById('photo-suggestion-box'),
+        suggestionDetailsText: document.getElementById('photo-suggestion-details'),
+        suggestionTitleText: document.getElementById('photo-suggestion-title'),
+        suggestionDescriptionText: document.getElementById('photo-suggestion-description'),
+        acceptBtn: document.getElementById('btn-accept-photo-suggestion'),
+        rejectBtn: document.getElementById('btn-reject-photo-suggestion'),
+        getBase64Image: () => base64Image,
+        getCategory: () => document.getElementById('garage-category').value.trim(),
+        onAccept: (result) => {
+            if (result.suggested_title) document.getElementById('garage-title').value = result.suggested_title;
+            if (result.suggested_description) document.getElementById('garage-description').value = result.suggested_description;
+        }
+    });
+}
 
 const STATUS_LABELS = { safe: '✅ Sicher', lost: '❓ Verloren', stolen: '🚨 Gestohlen' };
 const STATUS_BADGE_CLASS = {
@@ -93,6 +119,7 @@ async function handleFormSubmit(event) {
         if (response.ok) {
             document.getElementById('garage-form').reset();
             base64Image = "";
+            resetPhotoAnalysisBoxes();
             await loadGarageItems();
         } else {
             alert('Fehler: ' + (data.message || 'Registrieren fehlgeschlagen.'));
@@ -142,6 +169,7 @@ function init() {
     initTheme();
     renderAuthStatus('auth-status');
     initImageInput();
+    initPhotoAnalysisForGarageForm();
 
     document.getElementById('garage-form').addEventListener('submit', handleFormSubmit);
     document.getElementById('garage-items-list').addEventListener('click', handleListClick);

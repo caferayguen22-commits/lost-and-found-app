@@ -16,7 +16,7 @@ from services.vector_store_service import index_item as index_item_vector, remov
 from services.prompt_safety_service import contains_suspicious_pattern
 from services.product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
 from services.email_service import send_match_notification, send_claim_verified_notification
-from services.claim_service import compare_secret_feature
+from services.claim_service import compare_secret_feature, check_secret_feature_overlap
 from services.claim_attempts_repository import record_attempt, count_recent_attempts, has_verified_claim
 from models.item import Item
 from models.claim_attempt import ClaimAttempt
@@ -101,6 +101,26 @@ def get_product_catalog():
         "colors": COLOR_OPTIONS,
         "cases": CASE_OPTIONS_BY_CATEGORY
     }), 200
+
+
+@items_bp.route('/api/check-secret-feature-overlap', methods=['POST'])
+def check_secret_feature_overlap_route():
+    """
+    Rein lokale, deterministische Prüfung fürs Formular (siehe
+    services/claim_service.check_secret_feature_overlap) -- ob das geheime
+    Merkmal wörtlich/nahezu wörtlich auch in der Beschreibung auftaucht.
+    Nur ein Hinweis fürs Formular, kein Blocker, kein KI-Aufruf, keine
+    Persistenz -- deshalb auch kein Rate-Limiting nötig.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Keine Daten übergeben."}), 400
+
+    overlap = check_secret_feature_overlap(
+        data.get('secret_feature') or '',
+        data.get('description') or ''
+    )
+    return jsonify({"status": "success", "overlap": overlap}), 200
 
 
 @items_bp.route('/api/items', methods=['POST'])

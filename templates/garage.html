@@ -54,6 +54,26 @@
                 <div>
                     <label for="garage-image" class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Foto (Optional)</label>
                     <input type="file" id="garage-image" accept="image/*" class="w-full px-4 py-2 text-xs bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 dark:file:bg-indigo-950 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-200 dark:hover:file:bg-indigo-900 cursor-pointer">
+                    <button type="button" id="photo-analyze-btn" class="mt-2 w-full py-2.5 text-sm font-semibold bg-gray-100 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 hover:border-indigo-500 text-gray-700 dark:text-gray-300 rounded-xl transition-all">
+                        📷 Foto analysieren
+                    </button>
+
+                    <div id="photo-guidance-box" class="hidden mt-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40">
+                        <p class="text-sm text-amber-700 dark:text-amber-300"><span id="photo-guidance-text"></span></p>
+                    </div>
+
+                    <div id="photo-suggestion-box" class="hidden mt-3 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
+                        <p class="text-sm font-semibold text-indigo-700 dark:text-indigo-300 mb-2">🔎 Vorschlag aus der Foto-Analyse:</p>
+                        <p id="photo-suggestion-details" class="text-xs text-gray-600 dark:text-gray-400 mb-2"></p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Bezeichnungs-Vorschlag:</p>
+                        <p id="photo-suggestion-title" class="text-sm text-gray-700 dark:text-gray-300 italic mb-2"></p>
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Beschreibungs-Vorschlag:</p>
+                        <p id="photo-suggestion-description" class="text-sm text-gray-700 dark:text-gray-300 italic mb-4"></p>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-accept-photo-suggestion" class="flex-1 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all">Übernehmen</button>
+                            <button type="button" id="btn-reject-photo-suggestion" class="flex-1 py-2 text-sm font-semibold bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl transition-all">Verwerfen</button>
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" id="garage-submit-btn" class="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg transition-all">
                     Registrieren

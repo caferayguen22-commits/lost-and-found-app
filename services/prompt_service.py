@@ -83,3 +83,15 @@ def build_lost_prompt(**kwargs) -> tuple[str, str]:
     """
     template = _PROMPTS["lost"]
     return template["system_message"], template["user_template"].format(**_escape_kwargs(kwargs))
+
+
+def build_photo_analysis_prompt(**kwargs) -> tuple[str, str]:
+    """
+    Erwartet als kwargs: category. Der Bildinhalt selbst wird NICHT hier
+    eingebettet (kein Text, kann nicht in <nutzereingabe>-Tags escaped
+    werden) -- das Bild wird in services/photo_analysis_service.py separat
+    als eigener content-Block neben diesem Text an die KI übergeben.
+    Gibt (system_message, user_prompt) zurück.
+    """
+    template = _PROMPTS["photo_analysis"]
+    return template["system_message"], template["user_template"].format(**_escape_kwargs(kwargs))

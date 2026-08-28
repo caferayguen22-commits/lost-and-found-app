@@ -8,6 +8,7 @@ from api.stations_routes import stations_bp
 from api.status_routes import status_bp
 from api.auth_routes import auth_bp
 from api.garage_routes import garage_bp
+from api.photo_routes import photo_bp
 
 init_db()
 
@@ -19,6 +20,7 @@ app.register_blueprint(stations_bp)
 app.register_blueprint(status_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(garage_bp)
+app.register_blueprint(photo_bp)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5003)
