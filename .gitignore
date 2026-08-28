@@ -1,6 +1,7 @@
 .idea/
 .env
 *.db
+chroma_store/
 # KI & IDE Kontext-Dateien
 PROJECT_CONTEXT.md
 .ai/

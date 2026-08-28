@@ -5,14 +5,14 @@ import secrets
 from flask import Blueprint, jsonify, request, render_template
 from openai import OpenAIError
 
-from services.db import openai_client
 from services.items_repository import (
-    insert_item, get_item_by_id, get_all_items, get_items_by_type_and_category,
+    insert_item, get_item_by_id, get_all_items,
     update_item as update_item_row, delete_item as delete_item_row, mark_matched
 )
 from services.stations_repository import get_stations_by_category, get_station_by_name
 from services.location_service import geocode_berlin_address, haversine_distance_km
-from services.prompt_service import build_found_prompt, build_lost_prompt
+from services.matching_agent import run_matching
+from services.vector_store_service import index_item as index_item_vector, remove_item as remove_item_vector
 from services.prompt_safety_service import contains_suspicious_pattern
 from services.product_catalog import PRODUCT_DB, COLOR_OPTIONS, CASE_OPTIONS_BY_CATEGORY
 from services.email_service import send_match_notification, send_claim_verified_notification
@@ -163,57 +163,27 @@ def create_item():
             "deinen Verlust bitte so präzise wie möglich."
         )
 
-    # --- Bidirektionales Matching: IMMER gegen die jeweils andere Liste prüfen ---
-    opposite_type = 'lost' if item_type == 'found' else 'found'
-    other_items_list = [
-        {
-            "id": other.id,
-            "title": other.title,
-            "description": other.description,
-            "location": other.corrected_location or other.location,
-        }
-        for other in get_items_by_type_and_category(opposite_type, category)
-    ]
-
+    # --- Bidirektionales Matching: agentischer Retrieve->Grade->(Refine)->Finalize-
+    # Ablauf statt "alle Items der Kategorie in einen Prompt" (siehe
+    # services/matching_agent.py + lernnotizen.md). Die Kandidaten-Auswahl
+    # (Chroma-Ähnlichkeitssuche) übernimmt der Graph selbst.
     parsed_result = {
         "summary": None,
         "match_found": False,
         "matched_item_id": None,
         "match_probability": None,
+        "_offered_candidate_ids": [],
     }
 
     try:
-        if item_type == 'found':
-            system_message, prompt = build_found_prompt(
-                category=category,
-                title=title,
-                description=description,
-                corrected_location=corrected_location,
-                current_location=current_location,
-                other_items_list=other_items_list
-            )
-        else:
-            system_message, prompt = build_lost_prompt(
-                category=category,
-                title=title,
-                description=description,
-                corrected_location=corrected_location,
-                other_items_list=other_items_list
-            )
-
-        ai_response = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5,
-            timeout=15.0,
-            response_format={"type": "json_object"}
+        parsed_result = run_matching(
+            item_type=item_type,
+            category=category,
+            title=title,
+            description=description,
+            corrected_location=corrected_location,
+            current_location=current_location,
         )
-
-        parsed_result = json.loads(ai_response.choices[0].message.content)
-
     except OpenAIError as oe:
         parsed_result["summary"] = f"KI-Bericht derzeit nicht verfügbar (OpenAI API Fehler: {str(oe)})."
     except json.JSONDecodeError:
@@ -269,7 +239,7 @@ def create_item():
         # haben -- unabhängig davon, was die KI-Antwort behauptet. Schützt die
         # eigentliche Konsequenz (automatische Verknüpfung zweier Meldungen),
         # selbst falls die Prompt-Absicherung irgendwann doch umgangen würde.
-        candidate_ids = {entry["id"] for entry in other_items_list}
+        candidate_ids = set(parsed_result.get('_offered_candidate_ids') or [])
         try:
             match_id = int(match_id_raw)
         except (TypeError, ValueError):
@@ -289,8 +259,22 @@ def create_item():
             item.matched_item_id = matched_item.id
             item.match_probability = parsed_result.get('match_probability')
             mark_matched(matched_item.id, parsed_result.get('match_probability'))
+            # Der Partner ist jetzt match_found=True -- Chroma-Metadaten sonst
+            # veraltet, er würde künftig weiter fälschlich als offener Kandidat
+            # gefunden. Best-effort, wie bei der eigenen Indizierung oben.
+            try:
+                index_item_vector(get_item_by_id(matched_item.id))
+            except Exception as e:
+                logger.warning("Re-Indizierung für gematchtes Item %s fehlgeschlagen: %s", matched_item.id, e)
 
     new_item = insert_item(item)
+
+    # Neues Item für künftige Matching-Anfragen durchsuchbar machen. Best-effort:
+    # ein Problem beim Indizieren soll die Meldung selbst nicht scheitern lassen.
+    try:
+        index_item_vector(new_item)
+    except Exception as e:
+        logger.warning("Chroma-Indizierung für Item %s fehlgeschlagen: %s", new_item.id, e)
 
     # E-Mail-Benachrichtigungen an beide Seiten, sofern hinterlegt
     if new_item.match_found:
@@ -340,6 +324,10 @@ def get_items():
 @items_bp.route('/api/items/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
     if delete_item_row(item_id):
+        try:
+            remove_item_vector(item_id)
+        except Exception as e:
+            logger.warning("Chroma-Löschung für Item %s fehlgeschlagen: %s", item_id, e)
         return jsonify({"status": "success", "message": "Gegenstand erfolgreich entfernt."}), 200
     return jsonify({"status": "error", "message": "Gegenstand wurde nicht gefunden."}), 404
 
@@ -351,6 +339,15 @@ def update_item(item_id):
         return jsonify({"status": "error", "message": "Keine Daten übergeben."}), 400
 
     if update_item_row(item_id, **data):
+        # Beschreibung geändert (z.B. Rechtschreibkorrektur übernommen) -> das
+        # Chroma-Embedding basiert sonst auf veraltetem Text. Best-effort.
+        if 'description' in data or 'title' in data:
+            try:
+                updated_item = get_item_by_id(item_id)
+                if updated_item:
+                    index_item_vector(updated_item)
+            except Exception as e:
+                logger.warning("Re-Indizierung nach Update für Item %s fehlgeschlagen: %s", item_id, e)
         return jsonify({"status": "success", "message": "Gegenstand erfolgreich aktualisiert!"}), 200
     return jsonify({"status": "error", "message": "Gegenstand wurde nicht gefunden."}), 404
 
