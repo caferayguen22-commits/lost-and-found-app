@@ -5,6 +5,14 @@ function showError(el, message) {
     el.classList.remove('hidden');
 }
 
+function safeNextPath() {
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+        return next;
+    }
+    return '/';
+}
+
 async function submitAuthForm(url, payload, errorBoxId, submitBtnId) {
     const errorBox = document.getElementById(errorBoxId);
     const submitBtn = document.getElementById(submitBtnId);
@@ -20,7 +28,7 @@ async function submitAuthForm(url, payload, errorBoxId, submitBtnId) {
         const data = await response.json();
 
         if (response.ok) {
-            window.location.href = '/';
+            window.location.href = safeNextPath();
         } else {
             showError(errorBox, data.message || 'Das hat leider nicht geklappt.');
         }

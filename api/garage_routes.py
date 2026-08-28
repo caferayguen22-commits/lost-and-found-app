@@ -19,7 +19,7 @@ CHECK_RATE_LIMIT_WINDOW_MINUTES = 60
 @garage_bp.route('/garage')
 def garage_page():
     if 'user_id' not in session:
-        return redirect('/login')
+        return redirect('/login?next=/garage')
     return render_template('garage.html')
 
 
