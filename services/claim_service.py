@@ -1,13 +1,28 @@
 import re
 from difflib import SequenceMatcher
 
-SIMILARITY_THRESHOLD = 0.8
+# Kalibriert an einer Reihe realistischer Testfälle (siehe lernnotizen.md):
+# umgestellte Wortreihenfolge, weggelassene Füllwörter/Größenangaben und
+# deutsche Komposita liegen alle klar über 0.75; falsche/geratene Merkmale
+# klar unter 0.42. 0.7 liegt sicher dazwischen, mit Abstand nach beiden Seiten.
+SIMILARITY_THRESHOLD = 0.7
 
 # Wie viel Anteil des geheimen Merkmals (als zusammenhängender Textblock)
 # in der Beschreibung wiedergefunden werden muss, damit die Überlappungs-
 # Warnung anschlägt. Bewusst kein 100%-Match nötig -- verzeiht leicht
 # andere Formulierung drumherum, verlangt aber einen wesentlichen Kernteil.
 OVERLAP_THRESHOLD = 0.6
+
+# Nur echte Funktionswörter (Artikel, Präpositionen, Hilfsverben, Pronomen) --
+# bewusst KEINE Adjektive wie "klein"/"groß", die selbst Teil des gemeinten
+# Merkmals sein könnten und den Vergleich sonst künstlich verwässern würden.
+_STOPWORDS = {
+    "ein", "eine", "einer", "eines", "einem", "einen",
+    "der", "die", "das", "des", "dem", "den",
+    "und", "oder", "ist", "sind", "war", "hat", "hatte", "habe",
+    "von", "mit", "auf", "im", "in", "zu", "am", "an",
+    "da", "dort", "es", "gibt", "sich", "noch", "auch", "nur",
+}
 
 
 def _normalize(text: str) -> str:
@@ -18,18 +33,55 @@ def _normalize(text: str) -> str:
     return text
 
 
+def _tokens(text: str) -> set[str]:
+    """Wortmenge ohne Füllwörter, für den bedeutungsnäheren Vergleich in
+    _token_similarity() -- ergänzt den reinen Zeichenvergleich unten."""
+    return {w for w in _normalize(text).split() if w not in _STOPWORDS and len(w) > 1}
+
+
+def _token_similarity(a: str, b: str) -> float:
+    """
+    Dice-Koeffizient auf Wortebene statt Zeichenebene: erkennt umgestellte
+    Reihenfolge und weggelassene Füllwörter zuverlässig ("Kratzer unten
+    rechts" vs. "Es gibt einen Kratzer unten rechts"), und über den simplen
+    Teilstring-Check auch deutsche Komposita ("Katze" steckt in
+    "Katzenaufkleber"). Ersetzt SequenceMatcher nicht, sondern ergänzt ihn --
+    compare_secret_feature() nimmt jeweils den besseren der beiden Werte.
+
+    Bewusste Grenze: das bleibt reiner Wortabgleich, kein Sprachverständnis.
+    Ein Synonym ohne gemeinsame Wortbestandteile ("Katze" vs. "Hello Kitty")
+    wird NICHT erkannt -- das könnte nur eine KI beurteilen, und genau die
+    darf das geheime Merkmal nie zu Gesicht bekommen (siehe lernnotizen.md).
+    """
+    tokens_a, tokens_b = _tokens(a), _tokens(b)
+    if not tokens_a or not tokens_b:
+        return 0.0
+
+    shared = sum(
+        1 for wa in tokens_a
+        if any(
+            wa == wb or (len(wa) >= 4 and len(wb) >= 4 and (wa in wb or wb in wa))
+            for wb in tokens_b
+        )
+    )
+    return (2 * shared) / (len(tokens_a) + len(tokens_b))
+
+
 def compare_secret_feature(guess: str, actual: str) -> bool:
     """
     Toleranter Ähnlichkeitsvergleich statt exaktem String-Vergleich -- verzeiht
-    Tippfehler und andere Formulierung, verlangt aber weiterhin, dass der
-    wesentliche Inhalt getroffen wird (reines Python, difflib aus der
-    Standardbibliothek).
+    Tippfehler, andere Wortreihenfolge und weggelassene Füllwörter, verlangt
+    aber weiterhin, dass der wesentliche Inhalt getroffen wird. Kombiniert
+    zwei sich ergänzende Signale (reines Python, kein KI-Aufruf):
+    Zeichenketten-Ähnlichkeit (gut bei Tippfehlern) und Wort-Ähnlichkeit
+    (gut bei anderer Reihenfolge/Formulierung) -- der bessere Wert entscheidet.
     """
     if not guess or not actual:
         return False
 
-    ratio = SequenceMatcher(None, _normalize(guess), _normalize(actual)).ratio()
-    return ratio >= SIMILARITY_THRESHOLD
+    seq_ratio = SequenceMatcher(None, _normalize(guess), _normalize(actual)).ratio()
+    token_ratio = _token_similarity(guess, actual)
+    return max(seq_ratio, token_ratio) >= SIMILARITY_THRESHOLD
 
 
 def check_secret_feature_overlap(secret_feature: str, description: str) -> bool:
