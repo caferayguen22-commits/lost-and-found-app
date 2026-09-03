@@ -1,4 +1,11 @@
 import time
+import sys
+from pathlib import Path
+
+# Liegt in tools/, Projekt-Root muss trotzdem für "from services..." auf dem
+# sys.path stehen -- sonst wird das Skript beim direkten Aufruf
+# (python tools/seed_stations.py) nicht gefunden.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from services.location_service import geocode_berlin_address
 from services.stations_repository import insert_station, delete_all_stations

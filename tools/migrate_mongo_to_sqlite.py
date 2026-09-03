@@ -1,7 +1,14 @@
 import os
+import sys
+from pathlib import Path
 
 from pymongo import MongoClient
 from dotenv import load_dotenv
+
+# Liegt in tools/, Projekt-Root muss trotzdem für "from services..." auf dem
+# sys.path stehen -- sonst wird das Skript beim direkten Aufruf
+# (python tools/migrate_mongo_to_sqlite.py) nicht gefunden.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from services.db import init_db
 from services.stations_repository import insert_station

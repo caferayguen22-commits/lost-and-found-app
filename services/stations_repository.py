@@ -62,7 +62,7 @@ def get_stations_by_category(category: str, only_with_coords: bool = False) -> l
 
 
 def delete_all_stations() -> None:
-    """Für erneutes Seeden: leert die Tabelle komplett (z.B. seed_stations.py)."""
+    """Für erneutes Seeden: leert die Tabelle komplett (z.B. tools/seed_stations.py)."""
     connection = get_connection()
     try:
         connection.execute("DELETE FROM stations")
