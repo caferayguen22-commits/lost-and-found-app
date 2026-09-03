@@ -24,6 +24,20 @@ _STOPWORDS = {
     "da", "dort", "es", "gibt", "sich", "noch", "auch", "nur",
 }
 
+# Kleine, bewusst eng begrenzte Synonym-Liste für die häufigsten Lage-
+# beschreibungen. Kein allgemeines Sprachverständnis (das bräuchte eine KI,
+# siehe unten) -- nur eine Handvoll Wortpaare, bei denen fast jeder zwischen
+# beiden Formen frei wechselt ("Rückseite" vs. "hinten"), real aufgefallen
+# beim Testen: "ein Aufkleber ... auf der Rückseite" vs. "... hinten drauf"
+# wurde ohne diese Normalisierung fälschlich abgelehnt.
+_SYNONYMS = {
+    "rückseite": "hinten", "rueckseite": "hinten", "hinterseite": "hinten",
+    "vorderseite": "vorne", "vorderteil": "vorne",
+    "unterseite": "unten",
+    "oberseite": "oben",
+    "sticker": "aufkleber",
+}
+
 
 def _normalize(text: str) -> str:
     """lowercase, Satzzeichen raus, mehrfache Leerzeichen zusammenfassen."""
@@ -34,9 +48,24 @@ def _normalize(text: str) -> str:
 
 
 def _tokens(text: str) -> set[str]:
-    """Wortmenge ohne Füllwörter, für den bedeutungsnäheren Vergleich in
-    _token_similarity() -- ergänzt den reinen Zeichenvergleich unten."""
-    return {w for w in _normalize(text).split() if w not in _STOPWORDS and len(w) > 1}
+    """Wortmenge ohne Füllwörter (durch _SYNONYMS vereinheitlicht), für den
+    bedeutungsnäheren Vergleich in _token_similarity() -- ergänzt den reinen
+    Zeichenvergleich unten."""
+    words = _normalize(text).split()
+    return {_SYNONYMS.get(w, w) for w in words if w not in _STOPWORDS and len(w) > 1}
+
+
+def _count_matches(tokens_x: set[str], tokens_y: set[str]) -> int:
+    """Wie viele Wörter aus tokens_x haben (mind.) eine Entsprechung in
+    tokens_y -- exakt oder als Teilstring (für deutsche Komposita wie
+    "Katze" in "Katzenaufkleber"). Hilfsfunktion für _token_similarity()."""
+    return sum(
+        1 for wx in tokens_x
+        if any(
+            wx == wy or (len(wx) >= 4 and len(wy) >= 4 and (wx in wy or wy in wx))
+            for wy in tokens_y
+        )
+    )
 
 
 def _token_similarity(a: str, b: str) -> float:
@@ -48,23 +77,27 @@ def _token_similarity(a: str, b: str) -> float:
     "Katzenaufkleber"). Ersetzt SequenceMatcher nicht, sondern ergänzt ihn --
     compare_secret_feature() nimmt jeweils den besseren der beiden Werte.
 
-    Bewusste Grenze: das bleibt reiner Wortabgleich, kein Sprachverständnis.
-    Ein Synonym ohne gemeinsame Wortbestandteile ("Katze" vs. "Hello Kitty")
-    wird NICHT erkannt -- das könnte nur eine KI beurteilen, und genau die
-    darf das geheime Merkmal nie zu Gesicht bekommen (siehe lernnotizen.md).
+    Zählt Übereinstimmungen bewusst aus BEIDEN Richtungen (a->b und b->a) und
+    summiert sie, statt nur einseitig zu zählen -- sonst hängt das Ergebnis
+    von der Aufrufreihenfolge ab, wenn ein Kompositum mehrere Wörter der
+    anderen Seite gleichzeitig abdeckt (z.B. "Katzenaufkleber" deckt sowohl
+    "Katze" als auch "Aufkleber" ab). Ein echter Bug genau dieser Art wurde
+    beim Live-Testen entdeckt: compare_secret_feature(guess, actual) und
+    compare_secret_feature(actual, guess) lieferten unterschiedliche Werte,
+    obwohl Ähnlichkeit symmetrisch sein muss. Siehe lernnotizen.md.
+
+    Bewusste Grenze bleibt bestehen: das ist reiner Wortabgleich (plus eine
+    kleine Synonym-Liste für Lagebeschreibungen), kein Sprachverständnis.
+    Ein Markenname ohne gemeinsame Wortbestandteile ("Katze" vs. "Hello
+    Kitty") wird NICHT erkannt -- das könnte nur eine KI beurteilen, und
+    genau die darf das geheime Merkmal nie zu Gesicht bekommen.
     """
     tokens_a, tokens_b = _tokens(a), _tokens(b)
     if not tokens_a or not tokens_b:
         return 0.0
 
-    shared = sum(
-        1 for wa in tokens_a
-        if any(
-            wa == wb or (len(wa) >= 4 and len(wb) >= 4 and (wa in wb or wb in wa))
-            for wb in tokens_b
-        )
-    )
-    return (2 * shared) / (len(tokens_a) + len(tokens_b))
+    shared = _count_matches(tokens_a, tokens_b) + _count_matches(tokens_b, tokens_a)
+    return shared / (len(tokens_a) + len(tokens_b))
 
 
 def compare_secret_feature(guess: str, actual: str) -> bool:
